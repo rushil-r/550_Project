@@ -12,9 +12,27 @@ const connection = mysql.createConnection({
 });
 connection.connect((err) => err && console.log(err));
 
-/******************
- * WARM UP ROUTES *
- ******************/
+// Route 1: GET /home:redistricting_id:type:year:state:district:precinct
+const index = async function(req, res) {
+
+}
+
+// Route 2: GET /comparison/:redistricting_1:redistricting_2
+const comparison = async function(res, res) {
+
+}
+
+// Route 3: GET /comparison/:redistricting_1:redistricting_2
+const analytics = async function(res, res) {
+
+}
+
+// Route 4: GET /comparison/:redistricting_1:redistricting_2
+const create = async function(res, res) {
+
+}
+
+/*
 
 // Route 1: GET /author/:type
 const author = async function(req, res) {
@@ -68,10 +86,6 @@ const random = async function(req, res) {
     }
   });
 }
-
-/********************************
- * BASIC SONG/ALBUM INFO ROUTES *
- ********************************/
 
 // Route 3: GET /song/:song_id
 const song = async function(req, res) {
@@ -143,10 +157,6 @@ const album_songs = async function(req, res) {
       }
     });
 }
-
-/************************
- * ADVANCED INFO ROUTES *
- ************************/
 
 // Route 7: GET /top_songs
 const top_songs = async function(req, res) {
@@ -276,8 +286,14 @@ const search_songs = async function(req, res) {
       }
     });
 }
+*/
 
 module.exports = {
+  index,
+  comparison,
+  analytics,
+  create
+  /*
   author,
   random,
   song,
@@ -285,6 +301,5 @@ module.exports = {
   albums,
   album_songs,
   top_songs,
-  top_albums,
-  search_songs,
+  */
 }
