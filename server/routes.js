@@ -13,7 +13,7 @@ const connection = mysql.createConnection({
 connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /home:redistricting_id:type:year:state:district:precinct
-const index = async function(req, res) {
+const home = async function(req, res) {
 
 }
 
@@ -28,7 +28,7 @@ const analytics = async function(req, res) {
 }
 
 // Route 4: GET /create/:state
-const create = async function(res, res) {
+const create = async function(req, res) {
   const state = req.query.state;
   if (!state) {
     connection.query(`
