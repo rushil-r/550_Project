@@ -32,9 +32,22 @@ const create = async function(req, res) {
   const state = req.query.state;
   if (!state) {
     connection.query(`
-    SELECT precinct, district
-    FROM MAP_ELEMENT
-    WHERE name='default'
+      WITH AVG_VOTES AS (
+        SELECT precinct, AVERAGE(numVotes) AS votes, SUM(numVotes) AS total, party
+        FROM PRECINCT_RESULT
+        GROUP BY precinct, party
+      ),
+      PCT_VOTES AS (
+        SELECT m.precinct, m.district, a.party, a.votes, a.total
+        FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
+        WHERE name='default'
+      )
+      SELECT precinct, total, (CASE WHEN party = 'Democratic') AS dem_vote, (CASE WHEN party = 'Republican') AS rep_vote,
+      (CASE WHEN party = 'Libertarian') AS lib_vote, (CASE WHEN party = 'Green') AS gre_vote,
+      (CASE WHEN party = 'Constitution') AS con_vote,(CASE WHEN party = 'Independent') AS ind_vote
+      FROM PCT_VOTES
+      GROUP BY precinct, total
+      ORDER BY total DESC
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -44,6 +57,12 @@ const create = async function(req, res) {
         res.json(data);
       }
     })
+  } else {
+    connection.query(`
+      SELECT m.precinct, m.district
+      FROM MAP_ELEMENT m JOIN PRECINCT p ON m.precinct = p.name
+      WHERE name = 'default' AND p.state = ${state}
+    `)
   }
 }
 
