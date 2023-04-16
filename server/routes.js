@@ -18,18 +18,60 @@ const index = async function(req, res) {
 }
 
 // Route 2: GET /comparison/:redistricting_1:redistricting_2
-const comparison = async function(res, res) {
+const comparison = async function(req, res) {
 
 }
 
 // Route 3: GET /comparison/:redistricting_1:redistricting_2
-const analytics = async function(res, res) {
+const analytics = async function(req, res) {
 
 }
 
-// Route 4: GET /comparison/:redistricting_1:redistricting_2
+// Route 4: GET /create/:state
 const create = async function(res, res) {
+  const state = req.query.state;
+  if (!state) {
+    connection.query(`
+    SELECT precinct, district
+    FROM MAP_ELEMENT
+    WHERE name='default'
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else {
+        res.json(data);
+      }
+    })
+  }
+}
 
+const add = async function(req, res) {
+  var new_redistricting_name = req.body.name;
+  var new_redistricting_creator = req.body.creator;
+  var new_redistricting = req.body.elements;
+  connection.query(`
+    INSERT INTO DISTRICT_MAPPING(name, creator)
+    VALUES('${new_redistricting_name}', ${new_redistricting_creator})
+  `, function(err, result) {
+    if (err) {
+      console.log(err);
+      res.status(400).send("Redistricting failed to be added");
+      return;
+    }
+  });
+  for (i = 0; i < new_redistricting.length; i++) {
+    connection.query(`
+      INSERT INTO MAP_ELEMENT(name, precinct, district)
+      VALUES(${new_redistricting_name}, ${new_redistricting[i][0]}, ${new_redistricting[i][1]})
+    `, function(err, result) {
+      if (err) {
+        console.log(err);
+        res.status(400).send("Map element adding failed");
+      }
+    })
+  }
 }
 
 /*
