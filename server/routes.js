@@ -42,9 +42,9 @@ const create = async function(req, res) {
         FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
         WHERE name='default'
       )
-      SELECT precinct, total, (CASE WHEN party = 'Democratic') AS dem_vote, (CASE WHEN party = 'Republican') AS rep_vote,
-      (CASE WHEN party = 'Libertarian') AS lib_vote, (CASE WHEN party = 'Green') AS gre_vote,
-      (CASE WHEN party = 'Constitution') AS con_vote,(CASE WHEN party = 'Independent') AS ind_vote
+      SELECT precinct, total, (CASE WHEN party = 'Democratic' THEN party END) AS dem_vote, (CASE WHEN party = 'Republican' THEN party END) AS rep_vote,
+      (CASE WHEN party = 'Libertarian' THEN party END) AS lib_vote, (CASE WHEN party = 'Green' THEN party END) AS gre_vote,
+      (CASE WHEN party = 'Constitution' THEN party END) AS con_vote,(CASE WHEN party = 'Independent' THEN party END) AS ind_vote
       FROM PCT_VOTES
       GROUP BY precinct, total
       ORDER BY total DESC
