@@ -22,14 +22,10 @@ const comparison = async function(res, res) {
 
 }
 
-// Route 3: GET /comparison/:redistricting_1:redistricting_2
+// Route 4: GET /analytics/
 const analytics = async function(res, res) {
   // Which precincts voted for different parties in different elections in year X?
   connection.query(`
-    WITH VOTE_TOTAL as (
-      SELECT precinct, SUM(votes) as vote_total
-      FROM Precinct_Result GROUP BY precinct
-    ), 
     SELECT DISTINCT precinct
     FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct)
     WHERE p.type <> q.type AND p.party <> q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'  AND p.numVotes >= MAX (
@@ -47,11 +43,16 @@ const analytics = async function(res, res) {
       res.json({});
     } else {
       data7 = data;
+      // which precincts exhibited the largest difference in votes between elections of a given year
       connection.query(`
-        SELECT DISTINCT precinct
-        FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct)
+        WITH VOTE_TOTAL as (
+          SELECT precinct, SUM(votes) as vote_total
+          FROM Precinct_Result GROUP BY precinct
+        ), 
+        SELECT DISTINCT precinct. ABS(p.votes - q.votes) / v.vote_total AS diff
+        FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
         WHERE p.type <> q.type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
-        SORT BY (ABS(p.votes - q.votes)) DESC
+        SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC
         LIMIT 25`,
         (err, data) => {
         if (err || data.length === 0) {
@@ -59,11 +60,12 @@ const analytics = async function(res, res) {
           res.json({});
         } else {
           data11 = data;
+          // which precincts exhibited the largest difference in votes between years of any election type
           connection.query(`
-          SELECT DISTINCT precinct
-          FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct)
+          SELECT DISTINCT precinct, p.type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
+          FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
           WHERE p.type = q.type AND p.party = q.party AND p.year = '${req.params.year1}' AND q.year = '${req.params.year2}'
-          SORT BY (ABS(p.votes - q.votes)) DESC
+          SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC
           LIMIT 25`,
             (err, data) => {
             if (err || data.length === 0) {
