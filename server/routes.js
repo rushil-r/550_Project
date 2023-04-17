@@ -32,22 +32,22 @@ const create = async function(req, res) {
   const state = req.query.state;
   if (!state) {
     connection.query(`
-      WITH AVG_VOTES AS (
-        SELECT precinct, AVERAGE(numVotes) AS votes, SUM(numVotes) AS total, party
-        FROM PRECINCT_RESULT
-        GROUP BY precinct, party
+      WITH CUM_VOTES AS (
+        SELECT a.precinct, AVG(a.total_votes) AS total
+        FROM (SELECT precinct, year, election_type, SUM(votes) AS total_votes
+              FROM PRECINCT_RESULT
+              GROUP BY precinct, year, election_type) a
+        GROUP BY precinct
       ),
-      PCT_VOTES AS (
-        SELECT m.precinct, m.district, a.party, a.votes, a.total
-        FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
-        WHERE name='default'
-      )
-      SELECT precinct, total, (CASE WHEN party = 'Democratic' THEN party END) AS dem_vote, (CASE WHEN party = 'Republican' THEN party END) AS rep_vote,
-      (CASE WHEN party = 'Libertarian' THEN party END) AS lib_vote, (CASE WHEN party = 'Green' THEN party END) AS gre_vote,
-      (CASE WHEN party = 'Constitution' THEN party END) AS con_vote,(CASE WHEN party = 'Independent' THEN party END) AS ind_vote
-      FROM PCT_VOTES
-      GROUP BY precinct, total
-      ORDER BY total DESC
+      AVG_VOTES AS (
+              SELECT p.precinct, AVG(p.votes) AS avg_votes, c.total, p.party
+              FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON p.precinct = c.precinct
+              GROUP BY precinct, party
+            )
+      SELECT m.precinct, m.district, a.party, a.avg_votes, a.total
+      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
+      WHERE m.district_mapping='Default'
+      ORDER BY a.total;
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -59,9 +59,23 @@ const create = async function(req, res) {
     })
   } else {
     connection.query(`
-      SELECT m.precinct, m.district
-      FROM MAP_ELEMENT m JOIN PRECINCT p ON m.precinct = p.name
-      WHERE name = 'default' AND p.state = ${state}
+      WITH CUM_VOTES AS (
+        SELECT a.precinct, AVG(a.total_votes) AS total
+        FROM (SELECT precinct, year, election_type, SUM(votes) AS total_votes
+              FROM PRECINCT_RESULT
+              WHERE state = '${state}'
+              GROUP BY precinct, year, election_type) a
+        GROUP BY precinct
+      ),
+      AVG_VOTES AS (
+              SELECT p.precinct, AVG(p.votes) AS avg_votes, c.total, p.party
+              FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON p.precinct = c.precinct
+              GROUP BY precinct, party
+            )
+      SELECT m.precinct, m.district, a.party, a.avg_votes, a.total
+      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
+      WHERE m.district_mapping='Default'
+      ORDER BY a.total;
     `)
   }
 }
