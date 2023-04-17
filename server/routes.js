@@ -12,9 +12,87 @@ const connection = mysql.createConnection({
 });
 connection.connect((err) => err && console.log(err));
 
-// Route 1: GET /home:redistricting_id:type:year:state:district:precinct
+// Route 1: GET /home:redistricting_id:election_type:year:state:district:precincts
 const index = async function(req, res) {
+  const redistricting = req.params.redistricting_id 
+  const election_type = req.params.election_type 
+  const year = req.params.year
+  const state = req.query.state ?? 'All'; 
+  const district = req.query.district ?? 'All'; 
+  const precincts = req.query.district ?? 'All';
 
+  /**
+   * We have to change what we aggregate / what we send based on what is being selected
+   */
+  if (state == 'All') { 
+    connection.query(` 
+    write query here 
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = {};
+      } else {
+        election_results = data;
+      }
+    })
+  } else if (district == 'All') { 
+    connection.query(` 
+    write query here 
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = {};
+      } else {
+        election_results = data;
+      }
+    })
+  } else if (precincts == 'All') { 
+    connection.query(` 
+    write query here 
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = {};
+      } else {
+        election_results = data;
+      }
+    })
+  } else {
+    connection.query(` 
+    write query here 
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = {};
+      } else {
+        election_results = data;
+      }
+    })
+  }
+
+  /** 
+   * Here, we want to get all of the results, and based on 
+   * everything that is supplied above, we add conditionals to 
+   * determine what subset of results we want
+   */
+  connection.query(` 
+    write query here  
+    ${election_type}, ${year}, ${redistricting_id}
+  `,
+  (err, data) => {
+    if (err || data.length === 0) {
+      console.log(err);
+      election_results = {};
+    } else {
+      election_results = data;
+    }
+  })
+
+  res.json({election_results, election_summary})
 }
 
 // Route 2: GET /comparison/:redistricting_1:redistricting_2
