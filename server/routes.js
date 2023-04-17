@@ -27,7 +27,7 @@ const analytics = async function(req, res) {
 
 }
 
-// Route 4: GET /create/:state
+// Route 4: GET /create
 const create = async function(req, res) {
   const state = req.query.state;
   if (!state) {
@@ -44,7 +44,7 @@ const create = async function(req, res) {
               FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON p.precinct = c.precinct
               GROUP BY precinct, party
             )
-      SELECT m.precinct, m.district, a.party, a.avg_votes, a.total
+      SELECT m.precinct, m.county, m.state, m.district, a.party, a.avg_votes, a.total
       FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
       WHERE m.district_mapping='Default'
       ORDER BY a.total;
@@ -56,7 +56,7 @@ const create = async function(req, res) {
       } else {
         res.json(data);
       }
-    })
+    });
   } else {
     connection.query(`
       WITH CUM_VOTES AS (
@@ -72,14 +72,23 @@ const create = async function(req, res) {
               FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON p.precinct = c.precinct
               GROUP BY precinct, party
             )
-      SELECT m.precinct, m.district, a.party, a.avg_votes, a.total
+      SELECT m.precinct, m.county, m.state, m.district, a.party, a.avg_votes, a.total
       FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
       WHERE m.district_mapping='Default'
       ORDER BY a.total;
-    `)
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else {
+        res.json(data);
+      }
+    });
   }
 }
 
+// Route 5: add new redistricting
 const add = async function(req, res) {
   var new_redistricting_name = req.body.name;
   var new_redistricting_creator = req.body.creator;
@@ -96,8 +105,8 @@ const add = async function(req, res) {
   });
   for (i = 0; i < new_redistricting.length; i++) {
     connection.query(`
-      INSERT INTO MAP_ELEMENT(name, precinct, district)
-      VALUES(${new_redistricting_name}, ${new_redistricting[i][0]}, ${new_redistricting[i][1]})
+      INSERT INTO MAP_ELEMENT(precinct, state, county, district, district_mapping)
+      VALUES(${new_redistricting[i][0]}, ${new_redistricting[i][1]}, ${new_redistricting[i][2]}, ${new_redistricting[i][3]}, ${new_redistricting_name})
     `, function(err, result) {
       if (err) {
         console.log(err);
@@ -367,7 +376,8 @@ module.exports = {
   index,
   comparison,
   analytics,
-  create
+  create,
+  add
   /*
   author,
   random,
