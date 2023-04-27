@@ -22,11 +22,8 @@ const comparison = async function(req, res) {
 
 }
 
-// Route 3: GET /comparison/:redistricting_1:redistricting_2
-const analytics = async function(req, res) {
-
 // Route 4: GET /analytics/
-const analytics = async function(res, res) {
+const analytics = async function(req, res) {
   // Which precincts voted for different parties in different elections in year X?
   connection.query(`
     SELECT DISTINCT precinct
