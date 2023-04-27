@@ -13,7 +13,8 @@ app.use(cors({
 app.get('/home/:redistricting_id/:type/:year', routes.home);
 app.get('/analytics/:redistricting_id/:type/:year', routes.analytics);
 app.get('/comparison/:redistricting_id_1/:redistricting_id_2', routes.comparison);
-app.get('/create/:state', routes.create);
+app.get('/create', routes.create);
+app.post('/create/add', routes.add);
 
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
