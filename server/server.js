@@ -10,7 +10,7 @@ app.use(cors({
 
 // We use express to define our various API endpoints and
 // provide their handlers that we implemented in routes.js
-app.get('/home/:redistricting_id/:type/:year', routes.home);
+app.get('/index/:redistricting_id/:type/:year/', routes.index);
 app.get('/analytics/:redistricting_id/:type/:year', routes.analytics);
 app.get('/comparison/:redistricting_id_1/:redistricting_id_2', routes.comparison);
 app.get('/create/:state', routes.create);
