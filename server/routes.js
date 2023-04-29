@@ -13,7 +13,7 @@ const connection = mysql.createConnection({
 connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /home:redistricting_id:type:year:state:district:precinct
-const home = async function(req, res) {
+const index = async function(req, res) {
 
 }
 
@@ -523,6 +523,7 @@ const search_songs = async function(req, res) {
 */
 
 module.exports = {
+  index,
   comparison,
   analytics,
   create,
