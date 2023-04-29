@@ -3,7 +3,7 @@
   "rds_port": "3306",
   "rds_user": "admin",
   "rds_password" : "verylongpassword",
-  "rds_db": "project-database",
+  "rds_db": "CIS_550_FINAL",
   "server_host": "localhost",
   "server_port":"8080"
 }
