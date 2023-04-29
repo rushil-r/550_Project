@@ -88,21 +88,29 @@ const create = async function(req, res) {
   if (!state) {
     connection.query(`
       WITH CUM_VOTES AS (
-        SELECT a.precinct, AVG(a.total_votes) AS total
-        FROM (SELECT precinct, year, election_type, SUM(votes) AS total_votes
-              FROM PRECINCT_RESULT
-              GROUP BY precinct, year, election_type) a
-        GROUP BY precinct
+      SELECT a.precinct, a.county, a.state, AVG(a.total_votes) AS total
+      FROM (SELECT precinct, county, state, year, election_type, SUM(votes) AS total_votes
+          FROM PRECINCT_RESULT
+          GROUP BY precinct, county, state, year, election_type) a
+      GROUP BY precinct, county, state
       ),
       AVG_VOTES AS (
-              SELECT p.precinct, AVG(p.votes) AS avg_votes, c.total, p.party
-              FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON p.precinct = c.precinct
-              GROUP BY precinct, party
-            )
-      SELECT m.precinct, m.county, m.state, m.district, a.party, a.avg_votes, a.total
-      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
+          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, c.total, p.party
+          FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON (p.precinct = c.precinct AND p.state = c.state AND p.county = c.county)
+          GROUP BY p.precinct, p.county, p.state, p.party
+        )
+      SELECT m.precinct, m.county, m.state, m.district,
+           SUM(CASE a.party WHEN 'Republican' THEN a.avg_votes END) AS rep_vote,
+           SUM(CASE a.party WHEN 'Democratic' THEN a.avg_votes END) AS dem_vote,
+           SUM(CASE a.party WHEN 'Libertarian' THEN a.avg_votes END) AS lib_vote,
+           SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
+           SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
+           SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
+           a.total
+      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
       WHERE m.district_mapping='Default'
-      ORDER BY a.total;
+      GROUP BY m.precinct, m.county, m.state, m.district
+      ORDER BY a.total DESC;
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -115,22 +123,30 @@ const create = async function(req, res) {
   } else {
     connection.query(`
       WITH CUM_VOTES AS (
-        SELECT a.precinct, AVG(a.total_votes) AS total
-        FROM (SELECT precinct, year, election_type, SUM(votes) AS total_votes
-              FROM PRECINCT_RESULT
-              WHERE state = '${state}'
-              GROUP BY precinct, year, election_type) a
-        GROUP BY precinct
+      SELECT a.precinct, a.county, a.state, AVG(a.total_votes) AS total
+      FROM (SELECT precinct, county, state, year, election_type, SUM(votes) AS total_votes
+          FROM PRECINCT_RESULT
+          WHERE state = '${state}'
+          GROUP BY precinct, county, state, year, election_type) a
+      GROUP BY precinct, county, state
       ),
       AVG_VOTES AS (
-              SELECT p.precinct, AVG(p.votes) AS avg_votes, c.total, p.party
-              FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON p.precinct = c.precinct
-              GROUP BY precinct, party
-            )
-      SELECT m.precinct, m.county, m.state, m.district, a.party, a.avg_votes, a.total
-      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON m.precinct = a.precinct
+          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, c.total, p.party
+          FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON (p.precinct = c.precinct AND p.state = c.state AND p.county = c.county)
+          GROUP BY p.precinct, p.county, p.state, p.party
+        )
+      SELECT m.precinct, m.county, m.state, m.district,
+           SUM(CASE a.party WHEN 'Republican' THEN a.avg_votes END) AS rep_vote,
+           SUM(CASE a.party WHEN 'Democratic' THEN a.avg_votes END) AS dem_vote,
+           SUM(CASE a.party WHEN 'Libertarian' THEN a.avg_votes END) AS lib_vote,
+           SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
+           SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
+           SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
+           a.total
+      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
       WHERE m.district_mapping='Default'
-      ORDER BY a.total;
+      GROUP BY m.precinct, m.county, m.state, m.district
+      ORDER BY a.total DESC;
     `,
     (err, data) => {
       if (err || data.length === 0) {
