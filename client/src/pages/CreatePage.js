@@ -11,12 +11,13 @@ export default function CreatePage() {
 
   useEffect(() => {
     console.log("fetch initiated");
-    fetch(`https://${config.server_host}:${config.server_port}/create?state=${state}`)
-      .then(res => {res.json()})
+    fetch(`http://${config.server_host}:${config.server_port}/create?state=${state}`)
+      .then(res => {return res.json()})
       .then(resJson => {
-        const votes = resJson.map((outcome) => ({ outcome }));
+        const votes = resJson.map((outcome) => ({id: outcome.precinct + outcome.county + outcome.state, ... outcome }));
         setData(votes);
-      });
+      })
+      .catch(err => console.log(err));
     console.log(data);
     console.log("fetch completed");
   }, [state]);
