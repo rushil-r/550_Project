@@ -11,15 +11,15 @@ export default function CreatePage() {
 
   useEffect(() => {
     console.log("fetch initiated");
-    fetch(`http://${config.server_host}:${config.server_port}/create?state=${state}`)
-      .then(res => res.json())
+    fetch(`https://${config.server_host}:${config.server_port}/create?state=${state}`)
+      .then(res => {res.json()})
       .then(resJson => {
         const votes = resJson.map((outcome) => ({ outcome }));
         setData(votes);
       });
     console.log(data);
     console.log("fetch completed");
-  }, []);
+  }, [state]);
 
   const columns = [
     { field: 'precinct', headerName: 'Precinct'},

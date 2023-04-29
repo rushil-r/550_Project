@@ -188,6 +188,25 @@ const add = async function(req, res) {
   }
 }
 
+//Route 6: Gets the number of districts in a state
+const get_districts = async function(req, res) {
+  var state = req.query.state;
+  connection.query(`
+    SELECT num_districts
+    FROM STATE
+    WHERE state = '${state}'
+  `, (err, data) => {
+    if (err || data.length === 0) {
+      console.log(err);
+      res.json({});
+    } else {
+      console.log(data);
+      res.json(data);
+    }
+  }
+  )
+}
+
 /*
 
 // Route 1: GET /author/:type
@@ -448,7 +467,8 @@ module.exports = {
   comparison,
   analytics,
   create,
-  add
+  add,
+  get_districts
   /*
   author,
   random,
