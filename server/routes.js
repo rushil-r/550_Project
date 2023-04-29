@@ -13,17 +13,96 @@ const connection = mysql.createConnection({
 connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /home:redistricting_id:type:year:state:district:precinct
-const index = async function(req, res) {
+const home = async function(req, res) {
 
 }
 
-// Route 2: GET /comparison/:redistricting_1:redistricting_2
-const comparison = async function(res, res) {
-
+// Route 2: GET /comparison/:redistricting_1/:redistricting_2
+const comparison = async function(req, res) {
+  //For two distinct user-generated redistricting plans, this route displays how the number of 
+  //seats for all political parties would change across House elections in each year such an election 
+  //takes place. Below that, another query is used to generate the top 5 districts (and their precincts)
+  //which had the biggest changes in number of seats retained by each party between the two redistricting 
+  //plans. If the two redistrictings are identical, an error is thrown and the user is asked to ensure they
+  //are comparing two distinct redistrictings. If less than two or more than two redistricting IDs are provided, an error is thrown and the user is asked to ensure they are comparing two redistrictings.
+  if (req.params.redistricting_1 === req.params.redistricting_2) {
+    res.json({error: "Please ensure you are comparing two distinct redistrictings."});
+  } else if (req.params.redistricting_1 === undefined || req.params.redistricting_2 === undefined) {
+    res.json({error: "Please ensure you are comparing two redistrictings."});
+  } else {
+    connection.query(`
+    WITH DR AS 
+      (WITH PD AS 
+        (WITH Precinct_Mapping AS 
+          (SELECT * FROM District_Mapping d, Precinct p WHERE p.name = d.name AND d.name = '${req.params.redistricting_1}')   
+        SELECT *
+        FROM Precinct_Mapping PM JOIN Precinct_Results PR ON PM.precinct=PR.precinct
+        WHERE PR.type = 'house')
+      SELECT state, district, precinct, party, SUM(votes) AS numVotes
+      FROM PD
+      GROUP BY state, district, precinct, party),
+    DR2 AS
+      (WITH PD AS
+        (WITH Precinct_Mapping AS 
+          (SELECT * FROM District_Mapping d, Precinct p WHERE p.name = d.name AND d.name = '${req.params.redistricting_1}')   
+        SELECT *
+        FROM Precinct_Mapping PM JOIN Precinct_Results PR ON PM.precinct=PR.precinct
+        WHERE PR.type = 'house')
+      SELECT state, district, precinct, party, SUM(votes) AS numVotes
+      FROM PD
+      GROUP BY state, district, precinct, party)
+    SELECT DR.state, DR.precinct, DR.party, DR.numVotes, DR2.party, DR2.numVotes
+    FROM DR, DR2
+    WHERE DR.precinct = DR2.precinct AND DR.state = DR2.state
+    `),
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else  {
+        res.json(data);
+        connection.query(`
+          WITH DR AS 
+            (WITH PD AS 
+              (WITH Precinct_Mapping AS 
+                (SELECT * FROM District_Mapping d, Precinct p WHERE p.name = d.name AND d.name = '${req.params.redistricting_1}')   
+              SELECT *
+              FROM Precinct_Mapping PM JOIN Precinct_Results PR ON PM.precinct=PR.precinct
+              WHERE PR.type = 'house')
+            SELECT state, district, party, SUM(votes) AS numVotes
+            FROM PD
+            GROUP BY state, district, party),
+          DR2 AS
+            (WITH PD AS
+              (WITH Precinct_Mapping AS 
+                (SELECT * FROM District_Mapping d, Precinct p WHERE p.name = d.name AND d.name = '${req.params.redistricting_1}')   
+              SELECT *
+              FROM Precinct_Mapping PM JOIN Precinct_Results PR ON PM.precinct=PR.precinct
+              WHERE PR.type = 'house')
+            SELECT state, district, party, SUM(votes) AS numVotes
+            FROM PD
+            GROUP BY state, district, party)
+          SELECT DR.state, DR.district, DR.party ABS(DR.numVotes-DR2.numVotes) AS diffVotes
+          FROM DR, DR2
+          WHERE DR.district = DR2.district AND DR.state = DR2.state
+          ORDER BY diffVotes DESC
+          LIMIT 5
+        `), 
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            res.json({});
+          } else  {
+            res.json(data);
+          }
+        }
+      }
+    }
+  }
 }
 
 // Route 4: GET /analytics/
-const analytics = async function(res, res) {
+const analytics = async function(req, res) {
   // Which precincts voted for different parties in different elections in year X?
   connection.query(`
     SELECT DISTINCT precinct
@@ -82,9 +161,109 @@ const analytics = async function(res, res) {
   });
 }
 
-// Route 4: GET /comparison/:redistricting_1:redistricting_2
-const create = async function(res, res) {
+// Route 4: GET /create
+const create = async function(req, res) {
+  const state = req.query.state;
+  if (!state) {
+    connection.query(`
+      WITH CUM_VOTES AS (
+      SELECT a.precinct, a.county, a.state, AVG(a.total_votes) AS total
+      FROM (SELECT precinct, county, state, year, election_type, SUM(votes) AS total_votes
+          FROM PRECINCT_RESULT
+          GROUP BY precinct, county, state, year, election_type) a
+      GROUP BY precinct, county, state
+      ),
+      AVG_VOTES AS (
+          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, c.total, p.party
+          FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON (p.precinct = c.precinct AND p.state = c.state AND p.county = c.county)
+          GROUP BY p.precinct, p.county, p.state, p.party
+        )
+      SELECT m.precinct, m.county, m.state, m.district,
+           SUM(CASE a.party WHEN 'Republican' THEN a.avg_votes END) AS rep_vote,
+           SUM(CASE a.party WHEN 'Democratic' THEN a.avg_votes END) AS dem_vote,
+           SUM(CASE a.party WHEN 'Libertarian' THEN a.avg_votes END) AS lib_vote,
+           SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
+           SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
+           SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
+           a.total
+      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
+      WHERE m.district_mapping='Default'
+      GROUP BY m.precinct, m.county, m.state, m.district
+      ORDER BY a.total DESC;
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else {
+        res.json(data);
+      }
+    });
+  } else {
+    connection.query(`
+      WITH CUM_VOTES AS (
+      SELECT a.precinct, a.county, a.state, AVG(a.total_votes) AS total
+      FROM (SELECT precinct, county, state, year, election_type, SUM(votes) AS total_votes
+          FROM PRECINCT_RESULT
+          WHERE state = '${state}'
+          GROUP BY precinct, county, state, year, election_type) a
+      GROUP BY precinct, county, state
+      ),
+      AVG_VOTES AS (
+          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, c.total, p.party
+          FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON (p.precinct = c.precinct AND p.state = c.state AND p.county = c.county)
+          GROUP BY p.precinct, p.county, p.state, p.party
+        )
+      SELECT m.precinct, m.county, m.state, m.district,
+           SUM(CASE a.party WHEN 'Republican' THEN a.avg_votes END) AS rep_vote,
+           SUM(CASE a.party WHEN 'Democratic' THEN a.avg_votes END) AS dem_vote,
+           SUM(CASE a.party WHEN 'Libertarian' THEN a.avg_votes END) AS lib_vote,
+           SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
+           SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
+           SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
+           a.total
+      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
+      WHERE m.district_mapping='Default'
+      GROUP BY m.precinct, m.county, m.state, m.district
+      ORDER BY a.total DESC;
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else {
+        res.json(data);
+      }
+    });
+  }
+}
 
+// Route 5: add new redistricting
+const add = async function(req, res) {
+  var new_redistricting_name = req.body.name;
+  var new_redistricting_creator = req.body.creator;
+  var new_redistricting = req.body.elements;
+  connection.query(`
+    INSERT INTO DISTRICT_MAPPING(name, creator)
+    VALUES('${new_redistricting_name}', ${new_redistricting_creator})
+  `, function(err, result) {
+    if (err) {
+      console.log(err);
+      res.status(400).send("Redistricting failed to be added");
+      return;
+    }
+  });
+  for (i = 0; i < new_redistricting.length; i++) {
+    connection.query(`
+      INSERT INTO MAP_ELEMENT(precinct, state, county, district, district_mapping)
+      VALUES(${new_redistricting[i][0]}, ${new_redistricting[i][1]}, ${new_redistricting[i][2]}, ${new_redistricting[i][3]}, ${new_redistricting_name})
+    `, function(err, result) {
+      if (err) {
+        console.log(err);
+        res.status(400).send("Map element adding failed");
+      }
+    })
+  }
 }
 
 /*
@@ -344,10 +523,10 @@ const search_songs = async function(req, res) {
 */
 
 module.exports = {
-  index,
   comparison,
   analytics,
-  create
+  create,
+  add
   /*
   author,
   random,
