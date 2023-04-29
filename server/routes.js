@@ -428,7 +428,6 @@ const search_songs = async function(req, res) {
 */
 
 module.exports = {
-  index,
   comparison,
   analytics,
   create,
