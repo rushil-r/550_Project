@@ -84,6 +84,7 @@ const analytics = async function(req, res) {
 
 // Route 4: GET /create
 const create = async function(req, res) {
+  console.log("create initiated");
   const state = req.query.state;
   if (!state) {
     connection.query(`
