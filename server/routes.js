@@ -32,7 +32,7 @@ const index = async function(req, res) {
         selection_params = selection_params + `AND PR.precinct IS IN ${precincts}`
       }
     }
-    
+
   if (state == 'All') { 
     election_results = []
     connection.query(` 
@@ -111,7 +111,7 @@ const index = async function(req, res) {
     })
   } else if (precincts == 'All') { 
     connection.query(` 
-    
+      
     `,
     (err, data) => {
       if (err || data.length === 0) {
