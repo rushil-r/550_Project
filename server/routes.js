@@ -21,24 +21,85 @@ const index = async function(req, res) {
   const district = req.query.district ?? 'All'; 
   const precincts = req.query.district ?? 'All';
 
-  /**
-   * We have to change what we aggregate / what we send based on what is being selected
-   */
+  //need to check with multiple params. 
+
+  selection_params = `PR.year = ${year} AND PR.election_type = ${election_type}`
+  if (state != 'All') {
+    selection_params = selection_params + `AND PR.state = ${state}` 
+    if (district != 'All') {
+      selection_params = selection_params + `AND PR.district = ${district}` 
+      if (precincts != 'All') {
+        selection_params = selection_params + `AND PR.precinct IS IN ${precincts}`
+      }
+    }
+    
   if (state == 'All') { 
+    election_results = []
     connection.query(` 
-    write query here 
+    WITH state_winners AS
+    (SELECT state_votes.state, state_votes.party
+    FROM (
+    SELECT state, party, SUM(votes) AS total_votes
+    FROM PRECINCT_RESULT PR
+    WHERE PR.election_type = ${election_type} AND PR.year = ${year}
+    GROUP BY PR.state, party
+    HAVING SUM(votes)) state_votes WHERE (state, total_votes) IN (
+        SELECT state, MAX(total_votes)
+        FROM (
+                SELECT state, party, SUM(votes) AS total_votes
+                FROM PRECINCT_RESULT PR
+                WHERE PR.election_type = ${election_type} AND PR.year = ${year}
+                GROUP BY PR.state, party
+             ) state_votes_2
+        GROUP BY state
+        ))
+    SELECT SW.party, SUM(num_electoral_votes) AS electoral_votes
+    FROM state_winners SW JOIN STATE S ON SW.state = S.state
+    GROUP BY SW.party
     `,
     (err, data) => {
       if (err || data.length === 0) {
         console.log(err);
-        election_results = {};
+        election_results = [];
       } else {
-        election_results = data;
+        election_results[0] = data;
+      }
+    })
+    
+    connection.query(`
+    WITH precincts AS (SELECT PR.state, PR.party, DM.district, PR.votes, PR.precinct FROM PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = 'Default') DM ON
+    PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct
+    WHERE PR.year = ${year} AND PR.election_type = ${election_type})
+    SELECT district_results.state, district_results.district, district_results.party
+    FROM
+    (
+    SELECT precincts.state, precincts.party, precincts.district, SUM(precincts.votes) AS num_votes
+    FROM precincts
+    GROUP BY state, district, party) district_results 
+    WHERE (district_results.state, district_results.district, district_results.party, district_results.num_votes) IN (
+    SELECT state, party, district, MAX(votes)
+    FROM precincts
+    GROUP BY state, district, party
+    )
+    GROUP BY state, district
+    ORDER BY state, district
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = election_results;
+      } else {
+        election_results[1] = data;
       }
     })
   } else if (district == 'All') { 
+    election_results = []
     connection.query(` 
-    write query here 
+    SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party, PR.votes
+    FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = 'Default') DM ON
+    PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+    WHERE PR.year = ${year} AND PR.election_type = ${election_type} AND PR.state = ${state}
+    ORDER BY state, county, precinct ASC 
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -50,7 +111,7 @@ const index = async function(req, res) {
     })
   } else if (precincts == 'All') { 
     connection.query(` 
-    write query here 
+    
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -60,10 +121,36 @@ const index = async function(req, res) {
         election_results = data;
       }
     })
-  } else {
+
     connection.query(` 
-    write query here 
+    SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party, PR.votes
+    FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = 'Default') DM ON
+    PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+    WHERE PR.year = ${year} AND PR.election_type = ${election_type} AND PR.state = ${state}
+    ORDER BY state, county, precinct ASC 
     `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = {};
+      } else {
+        election_results[0] = data;
+      }
+    })
+  } else if (precincts == 'All') { 
+    connection.query(` 
+    
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        election_results = election_results;
+      } else {
+        election_results[1] = data;
+      }
+    })
+  } else {
+    connection.query(`  `,
     (err, data) => {
       if (err || data.length === 0) {
         console.log(err);
@@ -80,8 +167,11 @@ const index = async function(req, res) {
    * determine what subset of results we want
    */
   connection.query(` 
-    write query here  
-    ${election_type}, ${year}, ${redistricting_id}
+  SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party, PR.votes
+  FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = ${redistricting_id}) DM ON
+  PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+  WHERE ${selection_params}
+  ORDER BY state, county, precinct ASC
   `,
   (err, data) => {
     if (err || data.length === 0) {
@@ -91,7 +181,7 @@ const index = async function(req, res) {
       election_results = data;
     }
   })
-
+  // is it okay for this to be like that? 
   res.json({election_results, election_summary})
 }
 
@@ -380,4 +470,5 @@ module.exports = {
   album_songs,
   top_songs,
   */
+}
 }
