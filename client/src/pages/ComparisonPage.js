@@ -20,7 +20,6 @@ export default function ComparisonPage() {
         setData15(dist)}
       )
       .catch(err => console.log(err));
-    console.log(dist);
     console.log("fetch completed");
   }, [mapID1, mapID2]);
 
@@ -29,7 +28,7 @@ export default function ComparisonPage() {
     { field: 'state', headerName: 'State' },
     { field: 'district', headerName: 'District'},
     { field: 'party', headerName: 'Party' },
-    { field: 'votesDistA', headerName: 'Votes: Redistricting A' },
+    { field: 'votesDistA', headerName: 'Votes: Redistricting A'},
     { field: 'votesDistB', headerName: 'Votes: Redistricting B'}
   ];
 
