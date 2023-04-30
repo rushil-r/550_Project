@@ -131,7 +131,7 @@ const create = async function(req, res) {
         WHERE state = '${state}'
         GROUP BY p.precinct, p.county, p.party
       )
-    SELECT m.precinct, m.county,  m.district,
+    SELECT m.precinct, m.county, m.district,
         a.rep_vote,
         a.dem_vote,
         a.lib_vote,
