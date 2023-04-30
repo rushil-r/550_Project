@@ -101,17 +101,21 @@ const analytics = async function(req, res) {
       data7 = data;
       // which precincts exhibited the largest difference in votes between elections of a given year
       connection.query(`
-        WITH VOTE_TOTAL AS (
-          SELECT precinct, county, state, SUM(votes) AS vote_total
-          FROM PRECINCT_RESULT
-          GROUP BY precinct
+        WITH H_VOTE_TOTAL AS (
+          SELECT p.precinct, p.county, p.state, p.votes, p.party, p.election_type, p.votes / SUM(p.votes) AS v_rate
+          FROM PRECINCT_RESULT p
+          WHERE p.year = '${req.params.year}' AND p.election_type = 'house'
+          GROUP BY p.precinct
+        ), P_VOTE_TOTAL AS (
+          SELECT p.precinct, p.county, p.state, p.votes, p.party, p.election_type, p.votes / SUM(p.votes) AS v_rate
+          FROM PRECINCT_RESULT p
+          WHERE p.year = '${req.params.year1}' AND p.election_type = 'presidential'
+          GROUP BY p.precinct
         )
-        SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
-        FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
-          JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
-        WHERE p.election_type <> q.election_type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
+        SELECT DISTINCT pv.precinct, pv.county, pv.state, ABS(pv.v_rate - qv.v_rate)  as diff
+        FROM H_VOTE_TOTAL pv JOIN P_VOTE_TOTAL qv ON (pv.precinct = qv.precinct AND pv.county = qv.county AND pv.state = qv.state AND pv.party = qv.party AND pv.election_type <> qv.election_type)
         ORDER BY diff DESC
-        LIMIT 25`,
+        LIMIT 25;`,
         (err, data) => {
         if (err || data.length === 0) {
           console.log(err);
@@ -128,7 +132,7 @@ const analytics = async function(req, res) {
           SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
           FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
             JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
-          WHERE p.election_type = q.election_type AND p.party = q.party AND p.year = 2018 AND q.year = 2020
+          WHERE p.election_type = q.election_type AND p.party = q.party AND p.year = '${req.params.year1}' AND q.year = '${req.params.year2}'
           ORDER BY diff DESC
           LIMIT 25;`,
             (err, data) => {
