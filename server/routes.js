@@ -26,13 +26,13 @@ const comparison = async function(req, res) {
 const analytics = async function(req, res) {
   // Which precincts voted for different parties in different elections in year X?
   connection.query(`
-    SELECT DISTINCT p.precinct
-    FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct)
+    SELECT DISTINCT p.precinct, p.county, p.state
+    FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct, p.precinct = q.precinct)
     WHERE p.election_type <> q.election_type AND p.party <> q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'  AND p.votes >= (SELECT MAX(r.votes)
       FROM PRECINCT_RESULT r
       WHERE r.year = p.year AND r.precinct = p.precinct AND r.election_type = p.election_type) AND q.votes >= (SELECT MAX(s.votes)
         FROM PRECINCT_RESULT s
-        WHERE s.year = q.year AND s.precinct = q.precinct AND s.election_type = q.election_type);`,
+        WHERE s.year = q.year AND s.precinct = q.precinct AND s.election_type = q.election_type)`,
     (err, data) => {
     if (err || data.length === 0) {
       console.log(err);
@@ -41,14 +41,16 @@ const analytics = async function(req, res) {
       data7 = data;
       // which precincts exhibited the largest difference in votes between elections of a given year
       connection.query(`
-        WITH VOTE_TOTAL as (
-          SELECT precinct, SUM(votes) as vote_total
-          FROM Precinct_Result GROUP BY precinct
-        ), 
-        SELECT DISTINCT precinct ABS(p.votes - q.votes) / v.vote_total AS diff
-        FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
-        WHERE p.type <> q.type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
-        SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC
+        WITH VOTE_TOTAL AS (
+          SELECT precinct, county, state, SUM(votes) AS vote_total
+          FROM PRECINCT_RESULT
+          GROUP BY precinct
+        )
+        SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
+        FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
+          JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
+        WHERE p.election_type <> q.election_type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
+        ORDER BY diff DESC
         LIMIT 25`,
         (err, data) => {
         if (err || data.length === 0) {
@@ -58,11 +60,17 @@ const analytics = async function(req, res) {
           data11 = data;
           // which precincts exhibited the largest difference in votes between years of any election type
           connection.query(`
-          SELECT DISTINCT precinct, p.type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
-          FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
-          WHERE p.type = q.type AND p.party = q.party AND p.year = '${req.params.year1}' AND q.year = '${req.params.year2}'
-          SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC
-          LIMIT 25`,
+          WITH VOTE_TOTAL AS (
+            SELECT precinct, county, state, SUM(votes) AS vote_total
+            FROM PRECINCT_RESULT
+            GROUP BY precinct
+          )
+          SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
+          FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
+            JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
+          WHERE p.election_type = q.election_type AND p.party = q.party AND p.year = 2018 AND q.year = 2020
+          ORDER BY diff DESC
+          LIMIT 25;`,
             (err, data) => {
             if (err || data.length === 0) {
               console.log(err);
