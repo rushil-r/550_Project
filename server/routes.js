@@ -31,7 +31,7 @@ const comparison = async function(req, res) {
     res.json({error: "Please ensure you are comparing two redistrictings."});
   } else {
     connection.query(`
-    SELECT a.year, a.state, a.district, a.party, a.votesA, b.votesB
+    SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, a.votesA AS votesA, b.votesB AS votesB
     FROM (
     SELECT a.district, a.state, p.party, SUM(p.votes) AS votesA, p.year
             FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
@@ -52,7 +52,7 @@ const comparison = async function(req, res) {
       } else  {
         data15 = data
         connection.query(`
-        SELECT a.year, a.state, a.district, a.party, ABS(a.votesA-b.votesB) as diffVotes
+        SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, ABS(a.votesA-b.votesB) as diffVotes
         FROM (
         SELECT a.district, a.state, p.party, SUM(p.votes) AS votesA, p.year
                 FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
@@ -82,7 +82,6 @@ const comparison = async function(req, res) {
     }
   }
 }
-
 // Route 4: GET /analytics/
 const analytics = async function(req, res) {
   // Which precincts voted for different parties in different elections in year X?
