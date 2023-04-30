@@ -9,7 +9,7 @@ import AlbumsPage from './pages/AlbumsPage';
 import SongsPage from './pages/SongsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import CreatePage from './pages/CreatePage';
-
+import ComparisonPage from './pages/ComparisonPage';
 // createTheme enables you to customize the look and feel of your app past the default
 // in this case, we only change the color scheme
 export const theme = createTheme({
@@ -32,6 +32,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<CreatePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/comparison" element={<ComparisonPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
