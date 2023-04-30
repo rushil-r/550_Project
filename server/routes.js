@@ -13,13 +13,94 @@ const connection = mysql.createConnection({
 connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /home:redistricting_id:type:year:state:district:precinct
-const home = async function(req, res) {
+const index = async function(req, res) {
 
 }
 
-// Route 2: GET /comparison/:redistricting_1:redistricting_2
+// Route 2: GET /comparison/:redistricting_1/:redistricting_2
 const comparison = async function(req, res) {
-
+  //For two distinct user-generated redistricting plans, this route displays how the number of 
+  //seats for all political parties would change across House elections in each year such an election 
+  //takes place. Below that, another query is used to generate the top 5 districts (and their precincts)
+  //which had the biggest changes in number of seats retained by each party between the two redistricting 
+  //plans. If the two redistrictings are identical, an error is thrown and the user is asked to ensure they
+  //are comparing two distinct redistrictings. If less than two or more than two redistricting IDs are provided, an error is thrown and the user is asked to ensure they are comparing two redistrictings.
+  if (req.params.redistricting_1 === req.params.redistricting_2) {
+    res.json({error: "Please ensure you are comparing two distinct redistrictings."});
+  } else if (req.params.redistricting_1 === undefined || req.params.redistricting_2 === undefined) {
+    res.json({error: "Please ensure you are comparing two redistrictings."});
+  } else {
+    connection.query(`
+    WITH DR AS
+(WITH PD AS
+  (WITH Precinct_Mapping AS
+    (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
+  SELECT *
+  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
+  #WHERE DM.name = '${req.params.redistricting_1}'
+  )
+SELECT state, district, precinct, party, SUM(votes) AS numVotes
+FROM PD
+GROUP BY state, district, precinct, party),
+DR2 AS
+(WITH PD AS
+  (WITH Precinct_Mapping AS
+      (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
+  SELECT *
+  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
+  WHERE DM.name = '${req.params.redistricting_2}'
+  )
+SELECT state, district, precinct, party, SUM(votes) AS numVotes
+FROM PD
+GROUP BY state, district, precinct, party)
+SELECT DR.state, DR.precinct, DR.party, DR.numVotes, DR2.party, DR2.numVotes
+FROM DR JOIN DR2 ON DR.precinct = DR2.precinct`),
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else  {
+        res.json(data);
+        connection.query(`
+    WITH DR AS
+(WITH PD AS
+  (WITH Precinct_Mapping AS
+    (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
+  SELECT *
+  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
+  #WHERE DM.name = '${req.params.redistricting_1}'
+  )
+SELECT state, district, party, SUM(votes) AS numVotes
+FROM PD
+GROUP BY state, district, party),
+DR2 AS
+(WITH PD AS
+  (WITH Precinct_Mapping AS
+      (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
+  SELECT *
+  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
+  WHERE DM.name = '${req.params.redistricting_2}'
+  )
+SELECT state, district, party, SUM(votes) AS numVotes
+FROM PD
+GROUP BY state, district, party)
+          SELECT DR.state, DR.district, DR.party ABS(DR.numVotes-DR2.numVotes) AS diffVotes
+          FROM DR JOIN DR2 ON DR.district
+          WHERE DR.district = DR2.district 
+          ORDER BY diffVotes DESC
+          LIMIT 5
+        `), 
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            res.json({});
+          } else  {
+            res.json(data);
+          }
+        }
+      }
+    }
+  }
 }
 
 // Route 4: GET /analytics/
@@ -464,6 +545,7 @@ const search_songs = async function(req, res) {
 */
 
 module.exports = {
+  index,
   comparison,
   analytics,
   create,
