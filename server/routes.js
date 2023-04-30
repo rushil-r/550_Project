@@ -31,71 +31,51 @@ const comparison = async function(req, res) {
     res.json({error: "Please ensure you are comparing two redistrictings."});
   } else {
     connection.query(`
-    WITH DR AS
-(WITH PD AS
-  (WITH Precinct_Mapping AS
-    (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
-  SELECT *
-  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
-  #WHERE DM.name = '${req.params.redistricting_1}'
-  )
-SELECT state, district, precinct, party, SUM(votes) AS numVotes
-FROM PD
-GROUP BY state, district, precinct, party),
-DR2 AS
-(WITH PD AS
-  (WITH Precinct_Mapping AS
-      (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
-  SELECT *
-  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
-  WHERE DM.name = '${req.params.redistricting_2}'
-  )
-SELECT state, district, precinct, party, SUM(votes) AS numVotes
-FROM PD
-GROUP BY state, district, precinct, party)
-SELECT DR.state, DR.precinct, DR.party, DR.numVotes, DR2.party, DR2.numVotes
-FROM DR JOIN DR2 ON DR.precinct = DR2.precinct`),
+    SELECT a.year, a.state, a.district, a.party, a.votesA, b.votesB
+    FROM (
+    SELECT a.district, a.state, p.party, SUM(p.votes) AS votesA, p.year
+            FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
+            AND p.election_type = 'house' WHERE a.district_mapping = '${req.params.redistricting_1}'
+            GROUP BY  a.state, a.district, p.year, p.party
+         ) a
+    JOIN (
+    SELECT a.district, a.state, p.party, SUM(p.votes) AS votesB, p.year
+            FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
+            AND p.election_type = 'house' WHERE a.district_mapping = '${req.params.redistricting_2}'
+            GROUP BY a.state,  a.district, p.year, p.party
+        ) b
+    ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party = b.party;`),
     (err, data) => {
       if (err || data.length === 0) {
         console.log(err);
         res.json({});
       } else  {
-        res.json(data);
+        data15 = data
         connection.query(`
-    WITH DR AS
-(WITH PD AS
-  (WITH Precinct_Mapping AS
-    (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
-  SELECT *
-  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
-  #WHERE DM.name = '${req.params.redistricting_1}'
-  )
-SELECT state, district, party, SUM(votes) AS numVotes
-FROM PD
-GROUP BY state, district, party),
-DR2 AS
-(WITH PD AS
-  (WITH Precinct_Mapping AS
-      (SELECT d.precinct, d.state, d.district, d.county, d.district_mapping, p.year, p.election_type, p.votes, p.party FROM MAP_ELEMENT d JOIN PRECINCT_RESULT p ON p.precinct = d.precinct WHERE p.election_type = 'house')
-  SELECT *
-  FROM Precinct_Mapping PM JOIN DISTRICT_MAPPING DM ON PM.district_mapping=DM.name
-  WHERE DM.name = '${req.params.redistricting_2}'
-  )
-SELECT state, district, party, SUM(votes) AS numVotes
-FROM PD
-GROUP BY state, district, party)
-          SELECT DR.state, DR.district, DR.party ABS(DR.numVotes-DR2.numVotes) AS diffVotes
-          FROM DR JOIN DR2 ON DR.district
-          WHERE DR.district = DR2.district 
-          ORDER BY diffVotes DESC
-          LIMIT 5
+        SELECT a.year, a.state, a.district, a.party, ABS(a.votesA-b.votesB) as diffVotes
+        FROM (
+        SELECT a.district, a.state, p.party, SUM(p.votes) AS votesA, p.year
+                FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
+                AND p.election_type = 'house' WHERE a.district_mapping = '${req.params.redistricting_1}'
+                GROUP BY  a.state, a.district, p.year, p.party
+             ) a
+        JOIN (
+        SELECT a.district, a.state, p.party, SUM(p.votes) AS votesB, p.year
+                FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
+                AND p.election_type = 'house' WHERE a.district_mapping = '${req.params.redistricting_2}'
+                GROUP BY a.state,  a.district, p.year, p.party
+            ) b
+        ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party = b.party
+        ORDER BY diffVotes DESC
+        LIMIT 5
         `), 
         (err, data) => {
           if (err || data.length === 0) {
             console.log(err);
             res.json({});
           } else  {
-            res.json(data);
+            data17=data
+            res.json({"data15": data15, "data17": data17} );
           }
         }
       }
