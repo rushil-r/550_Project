@@ -71,7 +71,7 @@ export default function CreatePage() {
     <Container >
       <Dropdown className = 'Dropdown' placeholder='Select a state' options = {states} onChange={(value) => { setState(value.value) }}/>
       <Dropdown className = 'Dropdown' placeholder='Select a districting' options = {districtings} onChange={(value) => { setDistricting(value.value) }}/>
-      <h2>Set the districts here:</h2>
+      <h2>Summary:</h2>
       <DataGrid
         className="bg"
         rows={data}
