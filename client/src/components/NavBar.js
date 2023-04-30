@@ -36,7 +36,7 @@ export default function NavBar() {
     <AppBar position='static'>
       <Container maxWidth='xl'>
         <Toolbar disableGutters>
-          <NavText href='/' text='SWIFTIFY' isMain />
+          <NavText href='/' text='PROOF THE 2016 ELECTION WAS FAKE NEWS' isMain />
           <NavText href='/' text='CREATE' />
           <NavText href='/analytics' text='ANALYTICS' />
         </Toolbar>
