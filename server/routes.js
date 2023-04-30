@@ -25,11 +25,6 @@ const comparison = async function(req, res) {
   //which had the biggest changes in number of seats retained by each party between the two redistricting 
   //plans. If the two redistrictings are identical, an error is thrown and the user is asked to ensure they
   //are comparing two distinct redistrictings. If less than two or more than two redistricting IDs are provided, an error is thrown and the user is asked to ensure they are comparing two redistrictings.
-  if (req.params.redistricting_1 === req.params.redistricting_2) {
-    res.json({error: "Please ensure you are comparing two distinct redistrictings."});
-  } else if (req.params.redistricting_1 === undefined || req.params.redistricting_2 === undefined) {
-    res.json({error: "Please ensure you are comparing two redistrictings."});
-  } else {
     connection.query(`
     SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, a.votesA AS votesA, b.votesB AS votesB
     FROM (
@@ -79,7 +74,7 @@ const comparison = async function(req, res) {
           }
         }
       }
-    }
+    
   }
 }
 // Route 4: GET /analytics/
