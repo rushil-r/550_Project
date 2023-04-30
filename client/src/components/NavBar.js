@@ -1,6 +1,5 @@
 import { AppBar, Container, Toolbar, Typography } from '@mui/material'
 import { NavLink } from 'react-router-dom';
-import './NavBar.css';
 
 // The hyperlinks in the NavBar contain a lot of repeated formatting code so a
 // helper component NavText local to the file is defined to prevent repeated code.
@@ -38,7 +37,7 @@ export default function NavBar() {
       <Container maxWidth='xl' sx={{bgcolor: "black", borderRadius: "100px"}}>
         <Toolbar sx={{bgcolor: "black", borderRadius: "100px"}} disableGutters variant="dense">
           <NavText href='/' text='Gerrymandering' isMain />
-          <NavText href='/create' text='CREATE NEW REDISTRICTING' />
+          <NavText href='/create' text='SUMMARY' />
           <NavText href='/analytics' text='ANALYTICS' />
         </Toolbar>
       </Container>
