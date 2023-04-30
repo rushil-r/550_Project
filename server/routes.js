@@ -146,7 +146,7 @@ const analytics = async function(req, res) {
 }
 
 // Route 4: GET /create
-const create = async function(req, res) {
+const summary = async function(req, res) {
   console.log("create initiated");
   const state = req.query.state;
   const districting = req.query.districting;
@@ -559,7 +559,7 @@ module.exports = {
   index,
   comparison,
   analytics,
-  create,
+  summary,
   add,
   get_districts,
   get_states,

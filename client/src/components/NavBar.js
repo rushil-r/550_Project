@@ -37,7 +37,7 @@ export default function NavBar() {
       <Container maxWidth='xl' sx={{bgcolor: "black", borderRadius: "100px"}}>
         <Toolbar sx={{bgcolor: "black", borderRadius: "100px"}} disableGutters variant="dense">
           <NavText href='/' text='Gerrymandering' isMain />
-          <NavText href='/create' text='SUMMARY' />
+          <NavText href='/summary' text='SUMMARY' />
           <NavText href='/analytics' text='ANALYTICS' />
         </Toolbar>
       </Container>

@@ -14,7 +14,7 @@ app.use(cors({
 //app.get('/home/:redistricting_id/:type/:year', routes.home);
 app.get('/analytics', routes.analytics);
 app.get('/comparison', routes.comparison);
-app.get('/create', routes.create);
+app.get('/summary', routes.summary);
 app.get('/get_districts', routes.get_districts);
 app.get('/get_states', routes.get_states)
 app.get('/get_districtings', routes.get_districtings)

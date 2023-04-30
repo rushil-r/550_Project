@@ -31,6 +31,7 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<CreatePage />} />
+          <Route path="/summary" element={<CreatePage/>}/>
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/comparison" element={<ComparisonPage />} />
         </Routes>
