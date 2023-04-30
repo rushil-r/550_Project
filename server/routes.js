@@ -151,6 +151,7 @@ const analytics = async function(req, res) {
 const create = async function(req, res) {
   console.log("create initiated");
   const state = req.query.state;
+  const districting = req.query.districting;
   if (!state) {
     connection.query(`
       WITH AVG_VOTES AS (
@@ -207,7 +208,7 @@ const create = async function(req, res) {
         SUM(CASE party WHEN 'Green' THEN avg_votes END) AS gre_vote,
         SUM(CASE party WHEN 'Constitution' THEN avg_votes END) AS con_vote,
         SUM(CASE party WHEN 'Independent' THEN avg_votes END) AS ind_vote FROM AVG_VOTES GROUP BY precinct, county) a ON (m.precinct = a.precinct AND m.county = a.county)
-    WHERE m.district_mapping='Default'
+    WHERE m.district_mapping='${districting}'
     GROUP BY m.precinct, m.county, m.district;
     `,
     (err, data) => {
@@ -256,6 +257,40 @@ const get_districts = async function(req, res) {
     SELECT num_districts
     FROM STATE
     WHERE state = '${state}'
+  `, (err, data) => {
+    if (err || data.length === 0) {
+      console.log(err);
+      res.json({});
+    } else {
+      console.log(data);
+      res.json(data);
+    }
+  }
+  )
+}
+
+//Route 7: Gets the list of states
+const get_states = async function(req, res) {
+  connection.query(`
+    SELECT state
+    FROM STATE
+  `, (err, data) => {
+    if (err || data.length === 0) {
+      console.log(err);
+      res.json({});
+    } else {
+      console.log(data);
+      res.json(data);
+    }
+  }
+  )
+}
+
+//Route 8: Gets districting names
+const get_districtings = async function(req, res) {
+  connection.query(`
+    SELECT name
+    FROM DISTRICT_MAPPING
   `, (err, data) => {
     if (err || data.length === 0) {
       console.log(err);
@@ -530,7 +565,9 @@ module.exports = {
   analytics,
   create,
   add,
-  get_districts
+  get_districts,
+  get_states,
+  get_districtings
   /*
   author,
   random,

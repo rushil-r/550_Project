@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Checkbox, Container, FormControlLabel, Grid, Link, Slider, TextField } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import { Dropdown } from 'react-dropdown-now';
 import './CreatePage.css';
 
 const config = require('../config.json');
@@ -8,7 +9,10 @@ const config = require('../config.json');
 export default function CreatePage() {
 
   const [state, setState] = useState('PENNSYLVANIA');
+  const [districting, setDistricting] = useState('Default');
   const [data, setData] = useState([]);
+  const [states, setStates] = useState([]);
+  const [districintgs, setDistrictings] = useState([]);
 
   useEffect(() => {
     console.log("fetch initiated");
