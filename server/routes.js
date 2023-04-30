@@ -107,17 +107,13 @@ GROUP BY state, district, party)
 const analytics = async function(req, res) {
   // Which precincts voted for different parties in different elections in year X?
   connection.query(`
-    SELECT DISTINCT precinct
-    FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct)
-    WHERE p.type <> q.type AND p.party <> q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'  AND p.numVotes >= MAX (
-      SELECT numVotes 
-      FROM Precinct_Result 
-      WHERE year = p.year AND precinct = p.precinct AND type = p.type) AND q.numVotes >= MAX (
-        SELECT numVotes 
-        FROM Precinct_Result 
-        WHERE year = q.year AND precinct = q.precinct AND type = q.type
-      )
-    )`,
+    SELECT DISTINCT p.precinct, p.county, p.state
+    FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct, p.precinct = q.precinct)
+    WHERE p.election_type <> q.election_type AND p.party <> q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'  AND p.votes >= (SELECT MAX(r.votes)
+      FROM PRECINCT_RESULT r
+      WHERE r.year = p.year AND r.precinct = p.precinct AND r.election_type = p.election_type) AND q.votes >= (SELECT MAX(s.votes)
+        FROM PRECINCT_RESULT s
+        WHERE s.year = q.year AND s.precinct = q.precinct AND s.election_type = q.election_type)`,
     (err, data) => {
     if (err || data.length === 0) {
       console.log(err);
@@ -126,14 +122,16 @@ const analytics = async function(req, res) {
       data7 = data;
       // which precincts exhibited the largest difference in votes between elections of a given year
       connection.query(`
-        WITH VOTE_TOTAL as (
-          SELECT precinct, SUM(votes) as vote_total
-          FROM Precinct_Result GROUP BY precinct
-        ), 
-        SELECT DISTINCT precinct. ABS(p.votes - q.votes) / v.vote_total AS diff
-        FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
-        WHERE p.type <> q.type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
-        SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC
+        WITH VOTE_TOTAL AS (
+          SELECT precinct, county, state, SUM(votes) AS vote_total
+          FROM PRECINCT_RESULT
+          GROUP BY precinct
+        )
+        SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
+        FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
+          JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
+        WHERE p.election_type <> q.election_type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
+        ORDER BY diff DESC
         LIMIT 25`,
         (err, data) => {
         if (err || data.length === 0) {
@@ -143,11 +141,17 @@ const analytics = async function(req, res) {
           data11 = data;
           // which precincts exhibited the largest difference in votes between years of any election type
           connection.query(`
-          SELECT DISTINCT precinct, p.type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
-          FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
-          WHERE p.type = q.type AND p.party = q.party AND p.year = '${req.params.year1}' AND q.year = '${req.params.year2}'
-          SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC
-          LIMIT 25`,
+          WITH VOTE_TOTAL AS (
+            SELECT precinct, county, state, SUM(votes) AS vote_total
+            FROM PRECINCT_RESULT
+            GROUP BY precinct
+          )
+          SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
+          FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
+            JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
+          WHERE p.election_type = q.election_type AND p.party = q.party AND p.year = 2018 AND q.year = 2020
+          ORDER BY diff DESC
+          LIMIT 25;`,
             (err, data) => {
             if (err || data.length === 0) {
               console.log(err);
@@ -165,33 +169,32 @@ const analytics = async function(req, res) {
 
 // Route 4: GET /create
 const create = async function(req, res) {
+  console.log("create initiated");
   const state = req.query.state;
   if (!state) {
     connection.query(`
-      WITH CUM_VOTES AS (
-      SELECT a.precinct, a.county, a.state, AVG(a.total_votes) AS total
-      FROM (SELECT precinct, county, state, year, election_type, SUM(votes) AS total_votes
-          FROM PRECINCT_RESULT
-          GROUP BY precinct, county, state, year, election_type) a
-      GROUP BY precinct, county, state
-      ),
-      AVG_VOTES AS (
-          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, c.total, p.party
-          FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON (p.precinct = c.precinct AND p.state = c.state AND p.county = c.county)
+      WITH AVG_VOTES AS (
+          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, p.party
+          FROM PRECINCT_RESULT p
           GROUP BY p.precinct, p.county, p.state, p.party
         )
       SELECT m.precinct, m.county, m.state, m.district,
-           SUM(CASE a.party WHEN 'Republican' THEN a.avg_votes END) AS rep_vote,
-           SUM(CASE a.party WHEN 'Democratic' THEN a.avg_votes END) AS dem_vote,
-           SUM(CASE a.party WHEN 'Libertarian' THEN a.avg_votes END) AS lib_vote,
-           SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
-           SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
-           SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
-           a.total
-      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
+          a.rep_vote,
+          a.dem_vote,
+          a.lib_vote,
+          a.gre_vote,
+          a.con_vote,
+          a.ind_vote,
+          m.district AS new_dist
+      FROM MAP_ELEMENT m JOIN (SELECT precinct, county, state,
+          SUM(CASE party WHEN 'Republican' THEN avg_votes END) AS rep_vote,
+          SUM(CASE party WHEN 'Democratic' THEN avg_votes END) AS dem_vote,
+          SUM(CASE party WHEN 'Libertarian' THEN avg_votes END) AS lib_vote,
+          SUM(CASE party WHEN 'Green' THEN avg_votes END) AS gre_vote,
+          SUM(CASE party WHEN 'Constitution' THEN avg_votes END) AS con_vote,
+          SUM(CASE party WHEN 'Independent' THEN avg_votes END) AS ind_vote FROM AVG_VOTES GROUP BY precinct, county, state) a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
       WHERE m.district_mapping='Default'
-      GROUP BY m.precinct, m.county, m.state, m.district
-      ORDER BY a.total DESC;
+      GROUP BY m.precinct, m.county, m.state, m.district;
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -203,31 +206,29 @@ const create = async function(req, res) {
     });
   } else {
     connection.query(`
-      WITH CUM_VOTES AS (
-      SELECT a.precinct, a.county, a.state, AVG(a.total_votes) AS total
-      FROM (SELECT precinct, county, state, year, election_type, SUM(votes) AS total_votes
-          FROM PRECINCT_RESULT
-          WHERE state = '${state}'
-          GROUP BY precinct, county, state, year, election_type) a
-      GROUP BY precinct, county, state
-      ),
-      AVG_VOTES AS (
-          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, c.total, p.party
-          FROM PRECINCT_RESULT p JOIN CUM_VOTES c ON (p.precinct = c.precinct AND p.state = c.state AND p.county = c.county)
-          GROUP BY p.precinct, p.county, p.state, p.party
-        )
-      SELECT m.precinct, m.county, m.state, m.district,
-           SUM(CASE a.party WHEN 'Republican' THEN a.avg_votes END) AS rep_vote,
-           SUM(CASE a.party WHEN 'Democratic' THEN a.avg_votes END) AS dem_vote,
-           SUM(CASE a.party WHEN 'Libertarian' THEN a.avg_votes END) AS lib_vote,
-           SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
-           SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
-           SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
-           a.total
-      FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
-      WHERE m.district_mapping='Default'
-      GROUP BY m.precinct, m.county, m.state, m.district
-      ORDER BY a.total DESC;
+    WITH AVG_VOTES AS (
+        SELECT p.precinct, p.county, AVG(p.votes) AS avg_votes, p.party
+        FROM PRECINCT_RESULT p
+        WHERE state = '${state}'
+        GROUP BY p.precinct, p.county, p.party
+      )
+    SELECT m.precinct, m.county, m.district,
+        a.rep_vote,
+        a.dem_vote,
+        a.lib_vote,
+        a.gre_vote,
+        a.con_vote,
+        a.ind_vote,
+        m.district AS new_dist
+    FROM (SELECT precinct, county, district, district_mapping FROM MAP_ELEMENT WHERE state = '${state}') m JOIN (SELECT precinct, county,
+        SUM(CASE party WHEN 'Republican' THEN avg_votes END) AS rep_vote,
+        SUM(CASE party WHEN 'Democratic' THEN avg_votes END) AS dem_vote,
+        SUM(CASE party WHEN 'Libertarian' THEN avg_votes END) AS lib_vote,
+        SUM(CASE party WHEN 'Green' THEN avg_votes END) AS gre_vote,
+        SUM(CASE party WHEN 'Constitution' THEN avg_votes END) AS con_vote,
+        SUM(CASE party WHEN 'Independent' THEN avg_votes END) AS ind_vote FROM AVG_VOTES GROUP BY precinct, county) a ON (m.precinct = a.precinct AND m.county = a.county)
+    WHERE m.district_mapping='Default'
+    GROUP BY m.precinct, m.county, m.district;
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -266,6 +267,25 @@ const add = async function(req, res) {
       }
     })
   }
+}
+
+//Route 6: Gets the number of districts in a state
+const get_districts = async function(req, res) {
+  var state = req.query.state;
+  connection.query(`
+    SELECT num_districts
+    FROM STATE
+    WHERE state = '${state}'
+  `, (err, data) => {
+    if (err || data.length === 0) {
+      console.log(err);
+      res.json({});
+    } else {
+      console.log(data);
+      res.json(data);
+    }
+  }
+  )
 }
 
 /*
@@ -529,7 +549,8 @@ module.exports = {
   comparison,
   analytics,
   create,
-  add
+  add,
+  get_districts
   /*
   author,
   random,
