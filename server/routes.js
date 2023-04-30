@@ -45,7 +45,7 @@ const analytics = async function(req, res) {
           SELECT precinct, SUM(votes) as vote_total
           FROM Precinct_Result GROUP BY precinct
         ), 
-        SELECT DISTINCT precinct. ABS(p.votes - q.votes) / v.vote_total AS diff
+        SELECT DISTINCT precinct ABS(p.votes - q.votes) / v.vote_total AS diff
         FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct) JOIN VOTE_TOTAL v ON (p.precinct = v.precinct)
         WHERE p.type <> q.type AND p.party = q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'
         SORT BY (ABS(p.votes - q.votes) / v.vote_total) DESC

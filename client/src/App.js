@@ -7,7 +7,7 @@ import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import AlbumsPage from './pages/AlbumsPage';
 import SongsPage from './pages/SongsPage';
-import AlbumInfoPage from './pages/AlbumInfoPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import CreatePage from './pages/CreatePage';
 
 // createTheme enables you to customize the look and feel of your app past the default
@@ -31,9 +31,7 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<CreatePage />} />
-          <Route path="/albums" element={<AlbumsPage />} />
-          <Route path="/albums/:album_id" element={<AlbumInfoPage />} />
-          <Route path="/songs" element={<SongsPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
