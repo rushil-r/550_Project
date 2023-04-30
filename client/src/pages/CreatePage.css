@@ -2,7 +2,8 @@
   background: #cce6ff
 }
 .Dropdown {
-  width: 200;
+  width: 200px;
+  margin-top: 10px;
   text-align: center;
-  color:aquamarine;
+  background-color:aquamarine;
 }

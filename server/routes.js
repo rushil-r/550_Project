@@ -152,7 +152,7 @@ const create = async function(req, res) {
   console.log("create initiated");
   const state = req.query.state;
   const districting = req.query.districting;
-  if (!state) {
+  if (!state || !districting) {
     connection.query(`
       WITH AVG_VOTES AS (
           SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, p.party
@@ -165,8 +165,7 @@ const create = async function(req, res) {
           a.lib_vote,
           a.gre_vote,
           a.con_vote,
-          a.ind_vote,
-          m.district AS new_dist
+          a.ind_vote
       FROM MAP_ELEMENT m JOIN (SELECT precinct, county, state,
           SUM(CASE party WHEN 'Republican' THEN avg_votes END) AS rep_vote,
           SUM(CASE party WHEN 'Democratic' THEN avg_votes END) AS dem_vote,
@@ -199,8 +198,7 @@ const create = async function(req, res) {
         a.lib_vote,
         a.gre_vote,
         a.con_vote,
-        a.ind_vote,
-        m.district AS new_dist
+        a.ind_vote
     FROM (SELECT precinct, county, district, district_mapping FROM MAP_ELEMENT WHERE state = '${state}') m JOIN (SELECT precinct, county,
         SUM(CASE party WHEN 'Republican' THEN avg_votes END) AS rep_vote,
         SUM(CASE party WHEN 'Democratic' THEN avg_votes END) AS dem_vote,
