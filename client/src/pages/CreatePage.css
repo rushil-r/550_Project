@@ -1,3 +1,10 @@
 .bg {
   background: #cce6ff
 }
+.DropDown {
+  width: 200px;
+  border-color: black;
+  background-color: aquamarine;
+  margin-top: 10px;
+  text-align: center;
+}

@@ -288,6 +288,23 @@ const get_districts = async function(req, res) {
   )
 }
 
+//Route 7: Gets the list of states
+const get_states = async function(req, res) {
+  connection.query(`
+    SELECT state
+    FROM STATE
+  `, (err, data) => {
+    if (err || data.length === 0) {
+      console.log(err);
+      res.json({});
+    } else {
+      console.log(data);
+      res.json(data);
+    }
+  }
+  )
+}
+
 /*
 
 // Route 1: GET /author/:type
@@ -550,7 +567,8 @@ module.exports = {
   analytics,
   create,
   add,
-  get_districts
+  get_districts,
+  get_states
   /*
   author,
   random,
