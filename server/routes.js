@@ -26,17 +26,13 @@ const comparison = async function(req, res) {
 const analytics = async function(req, res) {
   // Which precincts voted for different parties in different elections in year X?
   connection.query(`
-    SELECT DISTINCT precinct
-    FROM Precinct_Result p JOIN Precinct_Result q ON (p.precinct = q.precinct)
-    WHERE p.type <> q.type AND p.party <> q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'  AND p.numVotes >= MAX (
-      SELECT numVotes 
-      FROM Precinct_Result 
-      WHERE year = p.year AND precinct = p.precinct AND type = p.type) AND q.numVotes >= MAX (
-        SELECT numVotes 
-        FROM Precinct_Result 
-        WHERE year = q.year AND precinct = q.precinct AND type = q.type
-      )
-    )`,
+    SELECT DISTINCT p.precinct
+    FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct)
+    WHERE p.election_type <> q.election_type AND p.party <> q.party AND p.year = '${req.params.year}' AND q.year = '${req.params.year}'  AND p.votes >= (SELECT MAX(r.votes)
+      FROM PRECINCT_RESULT r
+      WHERE r.year = p.year AND r.precinct = p.precinct AND r.election_type = p.election_type) AND q.votes >= (SELECT MAX(s.votes)
+        FROM PRECINCT_RESULT s
+        WHERE s.year = q.year AND s.precinct = q.precinct AND s.election_type = q.election_type);`,
     (err, data) => {
     if (err || data.length === 0) {
       console.log(err);
@@ -107,7 +103,7 @@ const create = async function(req, res) {
            SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
            SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
            SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
-           a.total
+           a.total, m.district AS new_dist
       FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
       WHERE m.district_mapping='Default'
       GROUP BY m.precinct, m.county, m.state, m.district
@@ -143,7 +139,7 @@ const create = async function(req, res) {
            SUM(CASE a.party WHEN 'Green' THEN a.avg_votes END) AS gre_vote,
            SUM(CASE a.party WHEN 'Constitution' THEN a.avg_votes END) AS con_vote,
            SUM(CASE a.party WHEN 'Independent' THEN a.avg_votes END) AS ind_vote,
-           a.total
+           a.total, m.district AS new_dist
       FROM MAP_ELEMENT m JOIN AVG_VOTES a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
       WHERE m.district_mapping='Default'
       GROUP BY m.precinct, m.county, m.state, m.district

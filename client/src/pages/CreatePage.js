@@ -6,7 +6,7 @@ const config = require('../config.json');
 
 export default function CreatePage() {
 
-  const [state, setState] = useState('');
+  const [state, setState] = useState('PENNSYLVANIA');
   const [data, setData] = useState([]);
 
   useEffect(() => {
@@ -33,6 +33,7 @@ export default function CreatePage() {
     { field: 'gre_vote', headerName: 'Green Votes' },
     { field: 'con_vote', headerName: 'Constitution Votes' },
     { field: 'ind_vote', headerName: 'Independent Votes' },
+    { field: 'new_dist', headerName: 'New District', editable: true }
   ];
 
   return (
