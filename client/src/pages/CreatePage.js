@@ -16,7 +16,7 @@ export default function CreatePage() {
 
   useEffect(() => {
     console.log("fetch initiated");
-    fetch(`http://${config.server_host}:${config.server_port}/create?state=${state}&districting=${districting}`)
+    fetch(`http://${config.server_host}:${config.server_port}/summary?state=${state}&districting=${districting}`)
       .then(res => {return res.json()})
       .then(resJson => {
         const votes = resJson.map((outcome) => ({id: outcome.precinct + outcome.county + outcome.state, ... outcome }));
