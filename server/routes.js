@@ -181,11 +181,6 @@ const analytics13 = async function(req, res) {
   if (req.query.year1 != 2016 || req.query.year2 != 2018) {
     // Which precincts exhibited the largest difference in votes between years X and Y of any election type??
     connection.query(`
-      WITH VOTE_TOTAL AS (
-        SELECT precinct, county, state, SUM(votes) AS vote_total
-        FROM PRECINCT_RESULT
-        GROUP BY precinct
-      )
       SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
       FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
         JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
