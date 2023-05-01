@@ -30,7 +30,7 @@ export default function App() {
       <BrowserRouter>
         <NavBar />
         <Routes>
-          <Route path="/" element={<CreatePage />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/summary" element={<CreatePage/>}/>
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/comparison" element={<ComparisonPage />} />
