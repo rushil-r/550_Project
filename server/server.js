@@ -16,6 +16,7 @@ app.get('/analytics7', routes.analytics7);
 app.get('/analytics11', routes.analytics11);
 app.get('/analytics13', routes.analytics13);
 app.get('/comparison', routes.comparison);
+app.get('/comparisonA', routes.comparisonA);
 app.get('/summary', routes.summary);
 app.get('/get_districts', routes.get_districts);
 app.get('/get_states', routes.get_states)
