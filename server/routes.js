@@ -169,12 +169,15 @@ const analytics13 = async function(req, res) {
 const summary = async function(req, res) {
   const state = req.query.state;
   const districting = req.query.districting;
-  if (state == '') {
+  console.log('summary query begin');
+  if (!state) {
+    console.log('no state');
     connection.query(`
       SELECT *
       FROM AVERAGE_VOTES;
     `,
     (err, data) => {
+      console.log("intermediate query completed")
       if (err || data.length === 0) {
         console.log(err);
         res.json({});
@@ -182,11 +185,12 @@ const summary = async function(req, res) {
         res.json(data);
       }
     });
+    console.log('no state query done');
   } else if (districting == 'Default') {
     connection.query(`
       SELECT *
       FROM AVERAGE_VOTES
-      WHERE state = '${state}'
+      WHERE state = ${state}
     `,
     (err, data) => {
       if (err || data.length === 0) {
@@ -201,7 +205,7 @@ const summary = async function(req, res) {
     WITH AVG_VOTES AS (
         SELECT p.precinct, p.county, AVG(p.votes) AS avg_votes, p.party
         FROM PRECINCT_RESULT p
-        WHERE state = '${state}'
+        WHERE state = ${state}
         GROUP BY p.precinct, p.county, p.party
       )
     SELECT m.precinct, m.county, m.district,
@@ -211,14 +215,14 @@ const summary = async function(req, res) {
         a.gre_vote,
         a.con_vote,
         a.ind_vote
-    FROM (SELECT precinct, county, district, district_mapping FROM MAP_ELEMENT WHERE state = '${state}') m JOIN (SELECT precinct, county,
+    FROM (SELECT precinct, county, district, district_mapping FROM MAP_ELEMENT WHERE state = ${state}) m JOIN (SELECT precinct, county,
         SUM(CASE party WHEN 'Republican' THEN avg_votes END) AS rep_vote,
         SUM(CASE party WHEN 'Democratic' THEN avg_votes END) AS dem_vote,
         SUM(CASE party WHEN 'Libertarian' THEN avg_votes END) AS lib_vote,
         SUM(CASE party WHEN 'Green' THEN avg_votes END) AS gre_vote,
         SUM(CASE party WHEN 'Constitution' THEN avg_votes END) AS con_vote,
         SUM(CASE party WHEN 'Independent' THEN avg_votes END) AS ind_vote FROM AVG_VOTES GROUP BY precinct, county) a ON (m.precinct = a.precinct AND m.county = a.county)
-    WHERE m.district_mapping='${districting}'
+    WHERE m.district_mapping=${districting}
     GROUP BY m.precinct, m.county, m.district;
     `,
     (err, data) => {

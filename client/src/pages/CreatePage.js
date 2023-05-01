@@ -15,13 +15,24 @@ export default function CreatePage() {
   const [districtings, setDistrictings] = useState([]);
 
   useEffect(() => {
-    fetch(`http://${config.server_host}:${config.server_port}/summary?state=${state}&districting=${districting}`)
+    if (state === '') {
+    fetch(`http://${config.server_host}:${config.server_port}/summary?districting='${districting}'`)
       .then(res => {return res.json()})
       .then(resJson => {
         const votes = resJson.map((outcome) => ({id: outcome.precinct + outcome.county + outcome.state, ... outcome }));
         setData(votes);
       })
       .catch(err => console.log(err));
+    } else {
+      fetch(`http://${config.server_host}:${config.server_port}/summary?state='${state}'&districting='${districting}'`)
+      .then(res => {return res.json()})
+      .then(resJson => {
+        const votes = resJson.map((outcome) => ({id: outcome.precinct + outcome.county + outcome.state, ... outcome }));
+        setData(votes);
+      })
+      .catch(err => console.log(err));
+    }
+
   }, [state, districting]);
   useEffect(() => {
     fetch(`http://${config.server_host}:${config.server_port}/get_states`)
