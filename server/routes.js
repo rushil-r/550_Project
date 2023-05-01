@@ -75,94 +75,155 @@ ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party =
   // GET /analytics7/
 const analytics7 = async function(req, res) {
   console.log('analytics7 initiated')
-  // Which precincts voted for different parties in different elections in year X?
-  connection.query(`
-    SELECT DISTINCT p.precinct, p.county, p.state
-    FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct)
-    WHERE p.election_type <> q.election_type AND p.party <> q.party AND p.year = ${req.query.year} AND q.year = ${req.query.year} AND p.votes >= (SELECT MAX(r.votes)
-      FROM PRECINCT_RESULT r
-      WHERE r.year = p.year AND r.precinct = p.precinct AND r.election_type = p.election_type) AND q.votes >= (SELECT MAX(s.votes)
-        FROM PRECINCT_RESULT s
-        WHERE s.year = q.year AND s.precinct = q.precinct AND s.election_type = q.election_type)`,
-    (err, data) => {
-    if (err || data.length === 0) {
-      if(data) {
-        console.log('data7 length:')
-        console.log(data.length)
+  if (req.query.year != 2016) {
+    console.log('analytics7 query case')
+    // Which precincts voted for different parties in different elections in year X?
+    connection.query(`
+      SELECT DISTINCT p.precinct, p.county, p.state
+      FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct)
+      WHERE p.election_type <> q.election_type AND p.party <> q.party AND p.year = ${req.query.year} AND q.year = ${req.query.year} AND p.votes >= (SELECT MAX(r.votes)
+        FROM PRECINCT_RESULT r
+        WHERE r.year = p.year AND r.precinct = p.precinct AND r.election_type = p.election_type) AND q.votes >= (SELECT MAX(s.votes)
+          FROM PRECINCT_RESULT s
+          WHERE s.year = q.year AND s.precinct = q.precinct AND s.election_type = q.election_type)`,
+      (err, data) => {
+      if (err || data.length === 0) {
+        if(data) {
+          console.log('data7 length:')
+          console.log(data.length)
+        }
+        console.log(err);
+        res.json({});
+      } else {
+        console.log('data7 success')
+        res.json(data);
       }
-      console.log(err);
-      res.json({});
-    } else {
-      console.log('data7 success')
-      res.json(data);
-    }
-  });
+    });
+  } else {
+    console.log('analytics7 default case')
+    connection.query(`
+      SELECT *
+      FROM def7`,
+      (err, data) => {
+      if (err || data.length === 0) {
+        if(data) {
+          console.log('data7 length:')
+          console.log(data.length)
+        }
+        console.log(err);
+        res.json({});
+      } else {
+        console.log('data7 success')
+        res.json(data);
+      }
+    });
+  }
 }
 
 // GET /analytics11/
 const analytics11 = async function(req, res) {
   console.log('analytics11 initiated')
   // Which precincts voted for different parties in different elections in year X?
-  connection.query(`
-    WITH H_VOTE_TOTAL AS (
-      SELECT p.precinct, p.county, p.state, p.votes, p.party, p.election_type, p.votes / SUM(p.votes) AS v_rate
-      FROM PRECINCT_RESULT p
-      WHERE p.year = ${req.query.year1} AND p.election_type = 'house'
-      GROUP BY p.precinct
-    ), P_VOTE_TOTAL AS (
-      SELECT p.precinct, p.county, p.state, p.votes, p.party, p.election_type, p.votes / SUM(p.votes) AS v_rate
-      FROM PRECINCT_RESULT p
-      WHERE p.year = ${req.query.year1} AND p.election_type = 'presidential'
-      GROUP BY p.precinct
-    )
-    SELECT DISTINCT pv.precinct, pv.county, pv.state, ABS(pv.v_rate - qv.v_rate)  as diff
-    FROM H_VOTE_TOTAL pv JOIN P_VOTE_TOTAL qv ON (pv.precinct = qv.precinct AND pv.county = qv.county AND pv.state = qv.state AND pv.party = qv.party AND pv.election_type <> qv.election_type)
-    ORDER BY diff DESC
-    LIMIT 25;`,
-    (err, data) => {
-    if (err || data.length === 0) {
-      if(data) {
-        console.log('data11 length:')
-        console.log(data.length)
+  if (req.query.year1 != 2016) {
+    connection.query(`
+      WITH H_VOTE_TOTAL AS (
+        SELECT p.precinct, p.county, p.state, p.votes, p.party, p.election_type, p.votes / SUM(p.votes) AS v_rate
+        FROM PRECINCT_RESULT p
+        WHERE p.year = ${req.query.year1} AND p.election_type = 'house'
+        GROUP BY p.precinct
+      ), P_VOTE_TOTAL AS (
+        SELECT p.precinct, p.county, p.state, p.votes, p.party, p.election_type, p.votes / SUM(p.votes) AS v_rate
+        FROM PRECINCT_RESULT p
+        WHERE p.year = ${req.query.year1} AND p.election_type = 'presidential'
+        GROUP BY p.precinct
+      )
+      SELECT DISTINCT pv.precinct, pv.county, pv.state, ABS(pv.v_rate - qv.v_rate)  as diff
+      FROM H_VOTE_TOTAL pv JOIN P_VOTE_TOTAL qv ON (pv.precinct = qv.precinct AND pv.county = qv.county AND pv.state = qv.state AND pv.party = qv.party AND pv.election_type <> qv.election_type)
+      ORDER BY diff DESC
+      LIMIT 25;`,
+      (err, data) => {
+      if (err || data.length === 0) {
+        if(data) {
+          console.log('data11 length:')
+          console.log(data.length)
+        }
+        console.log(err);
+        res.json({});
+      } else {
+        console.log('data11 success')
+        res.json(data);
       }
-      console.log(err);
-      res.json({});
-    } else {
-      console.log('data11 success')
-      res.json(data);
-    }
-  });
+    });
+  } else {
+    console.log('analytics11 default case')
+    connection.query(`
+      SELECT *
+      FROM def11`,
+      (err, data) => {
+      if (err || data.length === 0) {
+        if(data) {
+          console.log('data11 length:')
+          console.log(data.length)
+        }
+        console.log(err);
+        res.json({});
+      } else {
+        console.log('data11 success')
+        res.json(data);
+      }
+    });
+  }
 }
 
 // GET /analytics13/
 const analytics13 = async function(req, res) {
   console.log('analytics13 initiated')
-  // Which precincts voted for different parties in different elections in year X?
-  connection.query(`
-    WITH VOTE_TOTAL AS (
-      SELECT precinct, county, state, SUM(votes) AS vote_total
-      FROM PRECINCT_RESULT
-      GROUP BY precinct
-    )
-    SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
-    FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
-      JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
-    WHERE p.election_type = q.election_type AND p.party = q.party AND p.year = ${req.query.year1} AND q.year = ${req.query.year2}
-    ORDER BY diff DESC
-    LIMIT 25;`,
-    (err, data) => {
-    if (err || data.length === 0) {
-      if(data) {
-        console.log('data13 length:')
-        console.log(data.length)
+  if (req.query.year1 != 2016 || req.query.year2 != 2018) {
+    // Which precincts exhibited the largest difference in votes between years X and Y of any election type??
+    connection.query(`
+      WITH VOTE_TOTAL AS (
+        SELECT precinct, county, state, SUM(votes) AS vote_total
+        FROM PRECINCT_RESULT
+        GROUP BY precinct
+      )
+      SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
+      FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
+        JOIN VOTE_TOTAL v ON (p.precinct = v.precinct AND p.county = v.county AND p.state = v.state)
+      WHERE p.election_type = q.election_type AND p.party = q.party AND p.year = ${req.query.year1} AND q.year = ${req.query.year2}
+      ORDER BY diff DESC
+      LIMIT 25;`,
+      (err, data) => {
+      if (err || data.length === 0) {
+        if(data) {
+          console.log('data13 length:')
+          console.log(data.length)
+        }
+        console.log(err);
+        res.json({});
+      } else {
+        console.log('data13 success')
+        res.json(data);
       }
-      console.log(err);
-      res.json({});
-    } else {
-      console.log('data13 success')
-      res.json(data);
-    }
-  });
+    });
+  } else {
+    console.log('analytics13 default case')
+    connection.query(`
+      SELECT *
+      FROM def13`,
+      (err, data) => {
+      if (err || data.length === 0) {
+        if(data) {
+          console.log('data13 length:')
+          console.log(data.length)
+        }
+        console.log(err);
+        res.json({});
+      } else {
+        console.log('data13 success')
+        res.json(data);
+      }
+    });
+  }
 }
 
 // Route 4: GET /create
