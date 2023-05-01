@@ -23,20 +23,8 @@ var dis1 = req.query.redistricting_1;
 var dis2 = req.query.redistricting_2;
 var data15;
 var data17;
-connection.query(`
-SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, a.votesA AS votesA, b.votesB AS votesB
-FROM (SELECT a.district, a.state, p.party, SUM(p.votes) AS votesA, p.year
-        FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
-        AND p.election_type = 'house' WHERE a.district_mapping = '${dis1}'
-        GROUP BY a.state, a.district, p.year, p.party
-     ) a
-JOIN (
-SELECT a.district, a.state, p.party, SUM(p.votes) AS votesB, p.year
-        FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
-        AND p.election_type = 'house' WHERE a.district_mapping = '${dis2}'
-        GROUP BY a.state, a.district, p.year, p.party
-    ) b
-ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party = b.party;`,
+connection.query(`SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, a.votesA AS votesA, b.votesB AS votesB
+FROM DefMapping a JOIN TestMapping b ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party = b.party;`,
 (err, data) => {
   if (err || data.length === 0) {
     console.log(err);
@@ -45,19 +33,7 @@ ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party =
     data15 = data;
     connection.query(`
   SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, ABS(a.votesA-b.votesB) as diffVotes
-  FROM (
-  SELECT a.district, a.state, p.party, SUM(p.votes) AS votesA, p.year
-          FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
-          AND p.election_type = 'house' WHERE a.district_mapping = '${dis1}'
-          GROUP BY  a.state, a.district, p.year, p.party
-       ) a
-  JOIN (
-  SELECT a.district, a.state, p.party, SUM(p.votes) AS votesB, p.year
-            FROM MAP_ELEMENT a JOIN PRECINCT_RESULT p ON a.precinct = p.precinct AND a.state = p.state AND a.county=p.county
-            AND p.election_type = 'house' WHERE a.district_mapping = '${dis2}'
-            GROUP BY a.state,  a.district, p.year, p.party
-        ) b
-    ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party = b.party
+FROM DefMapping a JOIN TestMapping b ON a.state=b.state AND a.district = b.district AND a.year = b.year AND a.party = b.party
     ORDER BY diffVotes DESC
     LIMIT 5
     `, 
