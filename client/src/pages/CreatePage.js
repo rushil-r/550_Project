@@ -8,14 +8,13 @@ const config = require('../config.json');
 
 export default function CreatePage() {
 
-  const [state, setState] = useState('PENNSYLVANIA');
+  const [state, setState] = useState('');
   const [districting, setDistricting] = useState('Default');
   const [data, setData] = useState([]);
   const [states, setStates] = useState([]);
   const [districtings, setDistrictings] = useState([]);
 
   useEffect(() => {
-    console.log("fetch initiated");
     fetch(`http://${config.server_host}:${config.server_port}/summary?state=${state}&districting=${districting}`)
       .then(res => {return res.json()})
       .then(resJson => {
@@ -23,8 +22,6 @@ export default function CreatePage() {
         setData(votes);
       })
       .catch(err => console.log(err));
-    console.log(data);
-    console.log("fetch completed");
   }, [state, districting]);
   useEffect(() => {
     fetch(`http://${config.server_host}:${config.server_port}/get_states`)
@@ -69,7 +66,7 @@ export default function CreatePage() {
 
   return (
     <Container >
-      <Dropdown className = 'Dropdown' placeholder='Select a state' options = {states} onChange={(value) => { setState(value.value) }}/>
+      <Dropdown className = 'Dropdown' placeholder='Select a state' options = {states} onChange={(value) => { setState(value.value); }}/>
       <Dropdown className = 'Dropdown' placeholder='Select a districting' options = {districtings} onChange={(value) => { setDistricting(value.value) }}/>
       <h2>Summary:</h2>
       <DataGrid

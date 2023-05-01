@@ -147,32 +147,26 @@ const analytics = async function(req, res) {
 
 // Route 4: GET /create
 const summary = async function(req, res) {
-  console.log("create initiated");
   const state = req.query.state;
   const districting = req.query.districting;
-  if (!state || !districting) {
+  if (state == '') {
     connection.query(`
-      WITH AVG_VOTES AS (
-          SELECT p.precinct, p.county, p.state, AVG(p.votes) AS avg_votes, p.party
-          FROM PRECINCT_RESULT p
-          GROUP BY p.precinct, p.county, p.state, p.party
-        )
-      SELECT m.precinct, m.county, m.state, m.district,
-          a.rep_vote,
-          a.dem_vote,
-          a.lib_vote,
-          a.gre_vote,
-          a.con_vote,
-          a.ind_vote
-      FROM MAP_ELEMENT m JOIN (SELECT precinct, county, state,
-          SUM(CASE party WHEN 'Republican' THEN avg_votes END) AS rep_vote,
-          SUM(CASE party WHEN 'Democratic' THEN avg_votes END) AS dem_vote,
-          SUM(CASE party WHEN 'Libertarian' THEN avg_votes END) AS lib_vote,
-          SUM(CASE party WHEN 'Green' THEN avg_votes END) AS gre_vote,
-          SUM(CASE party WHEN 'Constitution' THEN avg_votes END) AS con_vote,
-          SUM(CASE party WHEN 'Independent' THEN avg_votes END) AS ind_vote FROM AVG_VOTES GROUP BY precinct, county, state) a ON (m.precinct = a.precinct AND m.state = a.state AND m.county = a.county)
-      WHERE m.district_mapping='Default'
-      GROUP BY m.precinct, m.county, m.state, m.district;
+      SELECT *
+      FROM AVERAGE_VOTES;
+    `,
+    (err, data) => {
+      if (err || data.length === 0) {
+        console.log(err);
+        res.json({});
+      } else {
+        res.json(data);
+      }
+    });
+  } else if (districting == 'Default') {
+    connection.query(`
+      SELECT *
+      FROM AVERAGE_VOTES
+      WHERE state = '${state}'
     `,
     (err, data) => {
       if (err || data.length === 0) {
