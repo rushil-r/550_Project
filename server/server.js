@@ -21,7 +21,7 @@ app.get('/get_districts', routes.get_districts);
 app.get('/get_states', routes.get_states)
 app.get('/get_districtings', routes.get_districtings)
 app.post('/create/add', routes.add);
-
+app.get('/home', routes.home);
 
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
