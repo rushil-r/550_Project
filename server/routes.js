@@ -13,8 +13,447 @@ const connection = mysql.createConnection({
 connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /home:redistricting_id:type:year:state:district:precinct
-const index = async function(req, res) {
+// Route 1: GET /home/redistricting_id/election_type:year:state:district:precincts
+const home = async function(req, res) {
+  const redistricting_id = req.query.redistricting_id ?? null;
+  console.log(`Redistricting ID:  ${redistricting_id}`);
+  const election_type = req.query.election_type ?? null;
+  console.log(`Election Type:  ${election_type}`)
+  const year = req.query.year ?? null;
+  console.log(`Year:  ${year}`);
+  const state = req.query.state ?? null; 
+  console.log(`State:  ${state}`);
+  const district = req.query.district ?? null; 
+  console.log(`District:  ${district}`);
+  const precincts = req.query.precincts ?? null; 
+  if ((redistricting_id === null) || (election_type === null) || (year === null)) {
+    output = {}
+    output['election_data'] = {} 
+    output['election_summary'] = {} 
+    res.json(output)
+  } else {
+    selection_params = `PR.year = ${year} AND PR.election_type = '${election_type}'`
+    if (state !== null) {
+      selection_params = `PR.year = ${year} AND PR.election_type = '${election_type}' AND PR.state = '${state}'`; 
+      if (district !== null) {
+        selection_params = `PR.year = ${year} AND PR.election_type = '${election_type}' AND PR.state = '${state}' AND DM.district = ${district}`; 
+        if (precincts !== null) {
+          selection_params = `PR.year = ${year} AND PR.election_type = '${election_type}' AND PR.state = '${state}' AND DM.district = ${district} AND PR.precinct IN ${precincts}`;
+        }
+      }
+    } 
+    if (state === null || state === 'All') {    
+      if (election_type == 'presidential') {
+        console.log('all presidential')
+        connection.query(`  
+          WITH state_winners AS
+          (
+            WITH state_votes AS
+          (SELECT state, party, SUM(votes) AS total_votes
+          FROM PRECINCT_RESULT PR
+          WHERE PR.election_type = 'presidential' AND PR.year = ${year}
+          GROUP BY state, party)
+          SELECT state, party
+          FROM state_votes sv
+          WHERE (sv.state, total_votes) IN
+            (SELECT sv2.state, MAX(total_votes)
+              FROM state_votes sv2
+              WHERE sv2.state = sv.state
+              GROUP BY state)
+              )
+          SELECT SW.party, SUM(num_electoral_votes) AS electoral_votes
+          FROM state_winners SW JOIN STATE S ON SW.state = S.state
+          GROUP BY SW.party
+        `,
+        (err, data) => { 
+          if (err || data.length === 0) {
+            console.log('line 69')
+            console.log(err); 
+            election_results = {}; 
+          } else  { 
+            console.log('line 73')
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democrat' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log('line 91')
+              console.log(err);
+              election_data = {}; 
+            } else {
+              console.log('line 92')
+              election_data = data;
+              // console.log(election_data)
+              output = {} 
+              output['election_data'] = election_data 
+              console.log('line 97')
+              output['election_summary'] = election_results
+              // console.log(output)
+              res.json(output)
+            }
+          }) 
+          }
+        })
+    } else {
+        connection.query(` 
+        WITH district_results AS
+        (WITH precincts AS (SELECT PR.state, PR.party, DM.district, PR.votes, PR.precinct FROM PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct
+        WHERE PR.year = ${year} AND PR.election_type = 'house')
+        SELECT precincts.state, precincts.party, precincts.district, SUM(precincts.votes) AS num_votes
+        FROM precincts
+        GROUP BY state, district, party)
+        SELECT DR1.party, COUNT(*) AS num_seats
+        FROM district_results DR1
+        WHERE (DR1.state, DR1.district, DR1.num_votes) = (SELECT DR2.state, DR2.district, MAX(DR2.num_votes)
+        FROM district_results DR2 WHERE DR1.state = DR2.state
+        AND DR1.district = DR2.district
+        GROUP BY DR2.state, DR2.district)
+        GROUP BY party
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {}; 
+            res.json({});
+          } else  {
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+          
+              output['election_summary'] = election_results
+              res.json(output)
+            }
+          }) 
+  
+  
+          }
+        }) 
+      } 
+    } else if (district === null || district === 'All') {  
+      console.log('State Provided')
+      if (election_type == 'presidential') {
+        connection.query(` 
+        SELECT party, SUM(votes) AS num_votes
+        FROM PRECINCT_RESULT PR
+        WHERE PR.election_type = 'presidential' AND PR.year = 2016 AND PR.state = '${state}'
+        GROUP BY PR.party
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {};
+          } else  {
+            console.log('line 179')
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+              // console.log(output) 
+              console.log('line 202')
+              console.log(election_results)
+              output['election_summary'] = election_results
+              res.json(output)
+            }
+          }) 
+  
+  
+          }
+        })
+      } else { 
+        connection.query(` 
+        WITH district_results AS
+        (WITH precincts AS (SELECT PR.state, PR.party, DM.district, PR.votes, PR.precinct FROM PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct
+        WHERE PR.year = ${year} AND PR.election_type = 'house' AND PR.state = '${state}')
+        SELECT precincts.state, precincts.party, precincts.district, SUM(precincts.votes) AS num_votes
+        FROM precincts
+        GROUP BY state, district, party)
+        SELECT DR1.party, COUNT(*) AS num_seats
+        FROM district_results DR1
+        WHERE (DR1.state, DR1.district, DR1.num_votes) = (SELECT DR2.state, DR2.district, MAX(DR2.num_votes)
+        FROM district_results DR2 WHERE DR1.state = DR2.state
+        AND DR1.district = DR2.district
+        GROUP BY DR2.state, DR2.district)
+        GROUP BY party
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {};
+          } else  {
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+          
+              output['election_summary'] = election_results
+              res.json(output)
+            }
+          }) 
+  
+  
+          }
+        })
+      } 
+    } else if (precincts === null) { 
+      if (election_type == 'presidential') {
+        connection.query(` 
+        SELECT party, SUM(votes) AS num_votes
+        FROM  (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+        WHERE PR.election_type = 'presidential' AND PR.year = ${year} AND DM.district = '${district}'
+        GROUP BY PR.party
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {};
+          } else  {
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+          
+              output['election_summary'] = election_results
+              // console.log('line 289')
+              // console.log(output)
+              res.json(output)
+            }
+          }) 
+  
+  
+          }
+        })
+      } else {
+        connection.query(`  
+        SELECT party, SUM(votes) AS num_votes
+        FROM  (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+        WHERE PR.election_type = 'house' AND PR.year = ${year} AND PR.state = '${state}' AND DM.district = ${district}
+        GROUP BY PR.party   
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {};
+          } else  {
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+          
+              output['election_summary'] = election_results
+              res.json(output)
+            }
+          }) 
+  
+  
+          }
+        })
+      }
+    } else { 
+      if (election_type == 'presidential') {
+        connection.query(` 
+        SELECT party, SUM(votes) AS num_votes
+        FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+        WHERE PR.election_type = 'presidential' AND PR.year = ${year} AND DM.district = ${district}
+        AND PR.precinct IN ${precincts}
+        GROUP BY PR.party
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {};
+          } else  {
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+              output['election_summary'] = election_results
+              res.json(output) 
+            }
+          }) 
+          }
+        })
+      } else {
+        connection.query(`  
+        SELECT party, SUM(votes) AS num_votes
+        FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+        WHERE PR.election_type = 'house' AND PR.year = ${year} AND PR.state = '${state}'
+        AND DM.district = ${district} AND PR.precinct IN ${precincts}
+        GROUP BY PR.party   
+        `,
+        (err, data) => {
+          if (err || data.length === 0) {
+            console.log(err);
+            election_results = {};
+          } else {
+            election_results = data;
+            connection.query(` 
+            SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
+            SUM(CASE WHEN PR.party = 'Republican' THEN votes ELSE 0 END) AS republican_votes,
+            SUM(CASE WHEN PR.party = 'Democratic' THEN votes ELSE 0 END) AS democratic_votes,
+            SUM(CASE WHEN PR.party = 'Libertarian' THEN votes ELSE 0 END) AS libertarian_votes,
+            SUM(CASE WHEN PR.party = 'Green' THEN votes ELSE 0 END) AS green_votes,
+            SUM(CASE WHEN PR.party = 'Constitution' THEN votes ELSE 0 END) AS constitution_votes, 
+            SUM(CASE WHEN PR.party = 'Independent' THEN votes ELSE 0 END) AS independent_votes
+            FROM (PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
+            PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct)
+            WHERE ${selection_params}
+            GROUP BY state, county, precinct, district
+            ORDER BY state, county, precinct ASC
+          `,
+          (err, data) => {
+            if (err || data.length === 0) {
+              console.log(err);
+              election_data = {}; 
+            } else {
+              election_data = data;
+              output = {} 
+              output['election_data'] = election_data 
+          
+              output['election_summary'] = election_results
+              res.json(output)
+            }
+          }) 
+  
+  
+          }
+        })
+      }
+    }
 
+  }
 }
 
 // Route 2: GET /comparison/:redistricting_1/:redistricting_2
@@ -630,7 +1069,7 @@ const search_songs = async function(req, res) {
 */
 
 module.exports = {
-  index,
+  home,
   comparison,
   analytics7,
   analytics11,
