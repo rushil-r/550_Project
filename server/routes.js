@@ -672,7 +672,7 @@ const summary = async function(req, res) {
   const state = req.query.state;
   const districting = req.query.districting;
   console.log('summary query begin');
-  if (!state && districting == 'Default') {
+  if (!state) {
     console.log('no state');
     connection.query(`
       SELECT *
