@@ -52,7 +52,7 @@ export default function ComparisonPage() {
     { field: 'state', headerName: 'State' , width: 220},
     { field: 'district', headerName: 'District', width: 220},
     { field: 'party', headerName: 'Party' , width: 220},
-    { field: 'diffVotes', headerName: 'Vote Differential Between Redistrictings', width: 240}
+    { field: 'diffVotes', headerName: 'Vote Differential Between Redistrictings', width: 290}
   ];
 
 
