@@ -457,11 +457,11 @@ const home = async function(req, res) {
 }
 
 // Route 2: GET /comparison/:redistricting_1/:redistricting_2
+// Route 2: GET /comparison/:redistricting_1/:redistricting_2
 const comparison = async function(req, res) {
 var dis1 = req.query.redistricting_1;
 var dis2 = req.query.redistricting_2;
-var data15;
-var data17;
+var state = req.query.state;
 connection.query(`SELECT mapA.year AS year, mapA.state AS state, mapA.district AS district, mapA.party AS party, mapA.votesA AS votesA, mapB.votesB AS votesB
 FROM (
     SELECT m.district, m.state, p.party, SUM(p.votes) AS votesA, p.year
@@ -481,36 +481,43 @@ ON mapA.state=mapB.state AND mapA.district = mapB.district AND mapA.year = mapB.
     console.log(err);
     res.json({});
   } else  {
-    data15 = data;
+    console.log('comp1 success')
+    res.json(data);
+  }});
+}
+
+const comparisonA = async function(req, res) {
+  var d1 = req.query.redistricting_1;
+  var d2 = req.query.redistricting_2;
+  var sta = req.query.state;
     connection.query(`
-  SELECT a.year AS year, a.state AS state, a.district AS district, a.party AS party, ABS(a.votesA-b.votesB) as diffVotes
+  SELECT mapA.year AS year, mapA.state AS state, mapA.district AS district, mapA.party AS party, ABS(mapA.votesA-mapB.votesB) as diffVotes
 FROM (
     SELECT m.district, m.state, p.party, SUM(p.votes) AS votesA, p.year
     FROM MAP_ELEMENT m JOIN PRECINCT_RESULT p ON m.precinct = p.precinct AND m.state = p.state AND m.county=p.county
-    AND p.election_type = 'house' WHERE m.district_mapping = '${dis1}' AND m.state = '${state}'
+    AND p.election_type = 'house' WHERE m.district_mapping = '${d1}' AND m.state = '${sta}'
     GROUP BY  m.state, m.district, p.year, p.party
     ) mapA
 INNER JOIN (
     SELECT m.district, m.state, p.party, SUM(p.votes) AS votesB, p.year
     FROM MAP_ELEMENT m JOIN PRECINCT_RESULT p ON m.precinct = p.precinct AND m.state = p.state AND m.county=p.county
-    AND p.election_type = 'house' WHERE m.district_mapping = '${dis2}' AND m.state = '${state}'
+    AND p.election_type = 'house' WHERE m.district_mapping = '${d2}' AND m.state = '${sta}'
     GROUP BY m.state,  m.district, p.year, p.party
     ) mapB
-ON mapA.state=mapB.state AND mapA.district = mapB.district AND mapA.year = mapB.year AND mapA.party = mapB.party;
+ON mapA.state=mapB.state AND mapA.district = mapB.district AND mapA.year = mapB.year AND mapA.party = mapB.party
     ORDER BY diffVotes DESC
-    LIMIT 5
-    `, 
+    LIMIT 5;`, 
     (err, data) => {
       if (err || data.length === 0) {
         console.log(err);
         res.json({});
       } else  {
-        data17 = data;
-        return res.json({data15, data17});
-      }
-    });
-  }}
-);}
+        console.log('comp2 success')
+        res.json(data);
+      }});
+  }
+
+
   // GET /analytics7/
 const analytics7 = async function(req, res) {
   console.log('analytics7 initiated')
@@ -1071,6 +1078,7 @@ const search_songs = async function(req, res) {
 module.exports = {
   home,
   comparison,
+  comparisonA,
   analytics7,
   analytics11,
   analytics13,
