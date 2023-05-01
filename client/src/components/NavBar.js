@@ -39,6 +39,7 @@ export default function NavBar() {
           <NavText href='/' text='Gerrymandering' isMain />
           <NavText href='/summary' text='SUMMARY' />
           <NavText href='/analytics' text='ANALYTICS' />
+          <NavText href='/comparison' text='COMPARE REDISTRICTINGS' />
         </Toolbar>
       </Container>
     </AppBar>
