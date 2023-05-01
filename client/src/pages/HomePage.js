@@ -183,6 +183,7 @@ export default function HomePage() {
           rows={data}
           columns={columns}
           autoHeight
+          className="bg"
         />
       </div>
   
