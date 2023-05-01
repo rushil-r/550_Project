@@ -12,7 +12,9 @@ app.use(cors({
 // provide their handlers that we implemented in routes.js
 
 //app.get('/home/:redistricting_id/:type/:year', routes.home);
-app.get('/analytics', routes.analytics);
+app.get('/analytics7', routes.analytics7);
+app.get('/analytics11', routes.analytics11);
+app.get('/analytics13', routes.analytics13);
 app.get('/comparison', routes.comparison);
 app.get('/summary', routes.summary);
 app.get('/get_districts', routes.get_districts);
