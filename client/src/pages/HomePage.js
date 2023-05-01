@@ -73,7 +73,7 @@ export default function HomePage() {
 
   
   useEffect(() => {
-    let url = `http://${config.server_host}:${config.server_port}/home/?redistricting_id=${redistricting_id}&election_type=${election_type}&year=${year}`
+    let url = `http://${config.server_host}:${config.server_port}/?redistricting_id=${redistricting_id}&election_type=${election_type}&year=${year}`
     if (state !== 'All' && state !== null) {
       url += `&state=${state}`;
       if (district !== 'All' && district !== null) {
