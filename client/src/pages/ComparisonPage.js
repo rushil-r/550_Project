@@ -7,13 +7,23 @@ const config = require('../config.json');
 
 export default function ComparisonPage() {
   const [pageSize, setPageSize] = useState(15);
+  const [state, setState] = useState('Michigan');
   const [redistricting_1, setmapredistricting_1] = useState('Default');
   const [redistricting_2, setmapredistricting_2] = useState('Test');
   const [data15, setData15] = useState([]);
   const [data17, setData17] = useState([]);
   const [districtings, setDistrictings] = useState([]);
+  const [states, setStates] = useState([]);
 
   useEffect(() => {
+    fetch(`http://${config.server_host}:${config.server_port}/get_states`)
+    .then(res => {return res.json()})
+    .then(resJson => {
+      const states = resJson.map((outcome) => (outcome.state));
+      setStates(states);
+    })
+    .catch(err => console.log(err));
+
     fetch(`http://${config.server_host}:${config.server_port}/get_districtings`)
     .then(res => {return res.json()})
     .then(resJson => {
@@ -24,16 +34,22 @@ export default function ComparisonPage() {
   }, []);
   
   useEffect(() => {
-    fetch(`http://${config.server_host}:${config.server_port}/comparison?redistricting_1=${redistricting_1}&redistricting_2=${redistricting_2}`)
+    fetch(`http://${config.server_host}:${config.server_port}/comparison?redistricting_1=${redistricting_1}&redistricting_2=${redistricting_2}&state=${state}`)
       .then(res => {return res.json()})
       .then(resJson => {
-        const ab = (resJson.data15).map((outcome) => ({id: outcome.year + outcome.state + outcome.district + outcome.party, ...outcome }));
-        setData15(ab);
-        const ad = (resJson.data17).map((outcome) => ({id: outcome.year + outcome.state + outcome.district + outcome.party, ...outcome }));
-        setData17(ad);
+        const comp = resJson.map((outcome) => ({id: outcome.year + outcome.state + outcome.district + outcome.party, ...outcome }));
+        setData15(comp);
       })
       .catch(err => console.log(err));  
-  }, [redistricting_1, redistricting_2]);
+
+    fetch(`http://${config.server_host}:${config.server_port}/comparisonA?redistricting_1=${redistricting_1}&redistricting_2=${redistricting_2}&state=${state}`)
+    .then(res => {return res.json()})
+      .then(resJson => {
+        const comp2 = resJson.map((outcome) => ({id: outcome.year + outcome.state + outcome.district + outcome.party, ...outcome }));
+        setData17(comp2);
+      })
+      .catch(err => console.log(err)); 
+  }, [redistricting_1, redistricting_2, state]);
 
 
 
@@ -60,6 +76,7 @@ export default function ComparisonPage() {
     <Container>
       <Dropdown className = 'Dropdown' placeholder='Select Districting #1' options = {districtings} onChange={(value) => { setmapredistricting_1(value.value) }}/>
       <Dropdown className = 'Dropdown' placeholder='Select Districting #2' options = {districtings} onChange={(value) => { setmapredistricting_2(value.value) }}/>
+      <Dropdown className = 'Dropdown' placeholder='Select State' options = {states} onChange={(value) => { setState(value.value) }}/>
       <h2>Comparison</h2>
       <h3>District Vote Differentials (House) by Party & Election</h3>
       <DataGrid
