@@ -1,70 +1,97 @@
 import { useState, useEffect } from 'react';
 import { Container } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import { Dropdown } from 'react-dropdown-now';
 
 const config = require('../config.json');
 
 export default function ComparisonPage() {
-
-  const [mapID1, setmapID1] = useState(['Default']);
-  const [mapID2, setmapID2] = useState(['Test']);
+  const [pageSize, setPageSize] = useState(15);
+  const [redistricting_1, setmapredistricting_1] = useState('Default');
+  const [redistricting_2, setmapredistricting_2] = useState('Test');
   const [data15, setData15] = useState([]);
   const [data17, setData17] = useState([]);
+  const [districtings, setDistrictings] = useState([]);
 
   useEffect(() => {
-    console.log(`${mapID1}`);
-    console.log(`${mapID2}`);
-    console.log("fetch initiated");
-    fetch(`http://${config.server_host}:${config.server_port}/comparison?redistricting_1=${mapID1}&redistricting_2=${mapID2}`)
+    fetch(`http://${config.server_host}:${config.server_port}/get_districtings`)
+    .then(res => {return res.json()})
+    .then(resJson => {
+      const districtings = resJson.map((outcome) => (outcome.name));
+      setDistrictings(districtings);
+    })
+    .catch(err => console.log(err));
+  }, []);
+  
+  useEffect(() => {
+    fetch(`http://${config.server_host}:${config.server_port}/comparison?redistricting_1=${redistricting_1}&redistricting_2=${redistricting_2}`)
       .then(res => {return res.json()})
       .then(resJson => {
-        console.log(resJson.length)
-        setData15(resJson[0]);
-        setData17(resJson[1]);
+        const ab = (resJson.data15).map((outcome) => ({id: outcome.year + outcome.state + outcome.district + outcome.party, ...outcome }));
+        setData15(ab);
+        const ad = (resJson.data17).map((outcome) => ({id: outcome.year + outcome.state + outcome.district + outcome.party, ...outcome }));
+        setData17(ad);
       })
-      .catch(err => console.log(err));
-      console.log(data15);
-      console.log(data17);
-    console.log("fetch completed");
-  }, [mapID1, mapID2]);
+      .catch(err => console.log(err));  
+  }, [redistricting_1, redistricting_2]);
+
+
 
 
   const columnsA = [
-    { field: 'year', headerName: 'Year'},
-    { field: 'state', headerName: 'State' },
-    { field: 'district', headerName: 'District'},
-    { field: 'party', headerName: 'Party' },
-    { field: 'votesA', headerName: 'Votes: Redistricting A'},
-    { field: 'votesB', headerName: 'Votes: Redistricting B'}
+    { field: 'year', headerName: 'Year', width: 200},
+    { field: 'state', headerName: 'State', width: 200 },
+    { field: 'district', headerName: 'District', width: 200},
+    { field: 'party', headerName: 'Party' , width: 200},
+    { field: 'votesA', headerName: 'Votes: Redistricting A', width: 200},
+    { field: 'votesB', headerName: 'Votes: Redistricting B', width: 200}
   ];
 
     const columnsB = [
-    { field: 'year', headerName: 'Year'},
-    { field: 'state', headerName: 'State' },
-    { field: 'district', headerName: 'District'},
-    { field: 'party', headerName: 'Party' },
-    { field: 'diffVotes', headerName: 'Vote Differential Between Redistrictings'}
+    { field: 'year', headerName: 'Year', width: 220},
+    { field: 'state', headerName: 'State' , width: 220},
+    { field: 'district', headerName: 'District', width: 220},
+    { field: 'party', headerName: 'Party' , width: 220},
+    { field: 'diffVotes', headerName: 'Vote Differential Between Redistrictings', width: 240}
   ];
 
 
   return (
     <Container>
+      <Dropdown className = 'Dropdown' placeholder='Select Districting #1' options = {districtings} onChange={(value) => { setmapredistricting_1(value.value) }}/>
+      <Dropdown className = 'Dropdown' placeholder='Select Districting #2' options = {districtings} onChange={(value) => { setmapredistricting_2(value.value) }}/>
       <h2>Comparison</h2>
       <h3>District Vote Differentials (House) by Party & Election</h3>
       <DataGrid
+        pageSize={pageSize}
+        rowsPerPageOptions={[5, 15, 30]}
+        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+        className="bg"
         rows={data15}
         columns={columnsA}
         autoHeight
+        sx={{width: "1250px"}}
       />
       <h3>Who Switched the Most? Which Districts Had the Highest Vote Differentials Between the Redistrictings</h3>
+      <DataGrid
+        pageSize={pageSize}
+        rowsPerPageOptions={[5, 15, 30]}
+        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+        className="bg"
+        rows={data17}
+        columns={columnsB}
+        autoHeight
+        sx={{width: "1250px"}}
+      />
+    </Container>
+  )
+
+  /*
       <DataGrid
         rows={data17}
         columns={columnsB}
         autoHeight
       />
-    </Container>
-  )
-
-  
+      */
 
 }
