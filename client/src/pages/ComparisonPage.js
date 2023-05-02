@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Container } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Dropdown } from 'react-dropdown-now';
+import './ComparisonPage.css';
 
 const config = require('../config.json');
 
