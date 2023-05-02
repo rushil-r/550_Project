@@ -8,6 +8,8 @@ const config = require('../config.json');
 
 export default function CreatePage() {
 
+  // state/districitng holds selected state/districting,
+  // states/districtings holds all states/districtings retrieved from queries
   const [state, setState] = useState('');
   const [districting, setDistricting] = useState('Default');
   const [data, setData] = useState([]);
@@ -15,6 +17,7 @@ export default function CreatePage() {
   const [districtings, setDistrictings] = useState([]);
 
   useEffect(() => {
+    // fetch data and change url based on if a state is selected
     if (state === '') {
     fetch(`http://${config.server_host}:${config.server_port}/summary?districting='${districting}'`)
       .then(res => {return res.json()})
@@ -34,6 +37,8 @@ export default function CreatePage() {
     }
 
   }, [state, districting]);
+
+  // run static queries to get states and districting names
   useEffect(() => {
     fetch(`http://${config.server_host}:${config.server_port}/get_states`)
       .then(res => {return res.json()})
@@ -52,6 +57,7 @@ export default function CreatePage() {
     .catch(err => console.log(err));
   }, []);
 
+  // define columns of DataGrid
   const columns = state ? [
     { field: 'precinct', headerName: 'Precinct', width: 80 },
     { field: 'county', headerName: 'County', width: 80 },

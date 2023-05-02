@@ -667,13 +667,14 @@ const analytics13 = async function(req, res) {
   }
 }
 
-// Route 4: GET /create
+// Route 4: GET /summary
 const summary = async function(req, res) {
+  // retrieve query parameters (filter by state and districting)
   const state = req.query.state;
   const districting = req.query.districting;
-  console.log('summary query begin');
+
   if (!state) {
-    console.log('no state');
+    //query materialized view if no state provided
     connection.query(`
       SELECT *
       FROM AVERAGE_VOTES;
@@ -689,6 +690,7 @@ const summary = async function(req, res) {
     });
     console.log('no state query done');
   } else if (districting == 'Default') {
+    // query materialized view if districting is default
     connection.query(`
       SELECT *
       FROM AVERAGE_VOTES
@@ -703,6 +705,7 @@ const summary = async function(req, res) {
       }
     });
   } else {
+    // run longer query if other districting is wanted by state
     connection.query(`
     WITH AVG_VOTES AS (
         SELECT p.precinct, p.county, AVG(p.votes) AS avg_votes, p.party
@@ -739,32 +742,32 @@ const summary = async function(req, res) {
 }
 
 // Route 5: add new redistricting
-const add = async function(req, res) {
-  var new_redistricting_name = req.body.name;
-  var new_redistricting_creator = req.body.creator;
-  var new_redistricting = req.body.elements;
-  connection.query(`
-    INSERT INTO DISTRICT_MAPPING(name, creator)
-    VALUES('${new_redistricting_name}', ${new_redistricting_creator})
-  `, function(err, result) {
-    if (err) {
-      console.log(err);
-      res.status(400).send("Redistricting failed to be added");
-      return;
-    }
-  });
-  for (i = 0; i < new_redistricting.length; i++) {
-    connection.query(`
-      INSERT INTO MAP_ELEMENT(precinct, state, county, district, district_mapping)
-      VALUES(${new_redistricting[i][0]}, ${new_redistricting[i][1]}, ${new_redistricting[i][2]}, ${new_redistricting[i][3]}, ${new_redistricting_name})
-    `, function(err, result) {
-      if (err) {
-        console.log(err);
-        res.status(400).send("Map element adding failed");
-      }
-    })
-  }
-}
+// const add = async function(req, res) {
+//   var new_redistricting_name = req.body.name;
+//   var new_redistricting_creator = req.body.creator;
+//   var new_redistricting = req.body.elements;
+//   connection.query(`
+//     INSERT INTO DISTRICT_MAPPING(name, creator)
+//     VALUES('${new_redistricting_name}', ${new_redistricting_creator})
+//   `, function(err, result) {
+//     if (err) {
+//       console.log(err);
+//       res.status(400).send("Redistricting failed to be added");
+//       return;
+//     }
+//   });
+//   for (i = 0; i < new_redistricting.length; i++) {
+//     connection.query(`
+//       INSERT INTO MAP_ELEMENT(precinct, state, county, district, district_mapping)
+//       VALUES(${new_redistricting[i][0]}, ${new_redistricting[i][1]}, ${new_redistricting[i][2]}, ${new_redistricting[i][3]}, ${new_redistricting_name})
+//     `, function(err, result) {
+//       if (err) {
+//         console.log(err);
+//         res.status(400).send("Map element adding failed");
+//       }
+//     })
+//   }
+// }
 
 //Route 6: Gets the number of districts in a state
 const get_districts = async function(req, res) {
