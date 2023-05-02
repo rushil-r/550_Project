@@ -506,7 +506,7 @@ INNER JOIN (
     ) mapB
 ON mapA.state=mapB.state AND mapA.district = mapB.district AND mapA.year = mapB.year AND mapA.party = mapB.party
     ORDER BY diffVotes DESC
-    LIMIT 5;`, 
+    LIMIT 15;`, 
     (err, data) => {
       if (err || data.length === 0) {
         console.log(err);
