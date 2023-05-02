@@ -462,7 +462,7 @@ const comparison = async function(req, res) {
 var dis1 = req.query.redistricting_1;
 var dis2 = req.query.redistricting_2;
 var state = req.query.state;
-connection.query(`SELECT mapA.year AS year, mapA.state AS state, mapA.district AS district, mapA.party AS party, mapA.votesA AS votesA, mapB.votesB AS votesB
+connection.query(`SELECT mapA.state AS state, mapA.district AS district, mapA.party AS party, mapA.year AS year, mapA.votesA AS votesA, mapB.votesB AS votesB
 FROM (
     SELECT m.district, m.state, p.party, SUM(p.votes) AS votesA, p.year
     FROM MAP_ELEMENT m JOIN PRECINCT_RESULT p ON m.precinct = p.precinct AND m.state = p.state AND m.county=p.county
@@ -491,7 +491,7 @@ const comparisonA = async function(req, res) {
   var d2 = req.query.redistricting_2;
   var sta = req.query.state;
     connection.query(`
-  SELECT mapA.year AS year, mapA.state AS state, mapA.district AS district, mapA.party AS party, ABS(mapA.votesA-mapB.votesB) as diffVotes
+  SELECT mapA.state AS state, mapA.district AS district, mapA.party AS party, mapA.year AS year, ABS(mapA.votesA-mapB.votesB) as diffVotes
 FROM (
     SELECT m.district, m.state, p.party, SUM(p.votes) AS votesA, p.year
     FROM MAP_ELEMENT m JOIN PRECINCT_RESULT p ON m.precinct = p.precinct AND m.state = p.state AND m.county=p.county
@@ -506,7 +506,7 @@ INNER JOIN (
     ) mapB
 ON mapA.state=mapB.state AND mapA.district = mapB.district AND mapA.year = mapB.year AND mapA.party = mapB.party
     ORDER BY diffVotes DESC
-    LIMIT 15;`, 
+    LIMIT 25;`, 
     (err, data) => {
       if (err || data.length === 0) {
         console.log(err);
