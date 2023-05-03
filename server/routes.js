@@ -803,7 +803,6 @@ module.exports = {
   analytics11,
   analytics13,
   summary,
-  add,
   get_districts,
   get_states,
   get_districtings
