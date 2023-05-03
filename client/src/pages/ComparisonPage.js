@@ -8,15 +8,20 @@ const config = require('../config.json');
 
 export default function ComparisonPage() {
   const [pageSize, setPageSize] = useState(15);
+  
+  //states for user defined parameters
   const [state, setState] = useState('Michigan');
   const [redistricting_1, setmapredistricting_1] = useState('Default');
   const [redistricting_2, setmapredistricting_2] = useState('Test');
+
+  //states for resJson Data
   const [data15, setData15] = useState([]);
   const [data17, setData17] = useState([]);
   const [districtings, setDistrictings] = useState([]);
   const [states, setStates] = useState([]);
 
-  useEffect(() => {
+  useEffect(() => { //first attempt to fetch the states list and district re-mappings
+                    //lists with MySQL query so user-parameter options can be displayed on front-end
     fetch(`http://${config.server_host}:${config.server_port}/get_states`)
     .then(res => {return res.json()})
     .then(resJson => {
@@ -34,7 +39,8 @@ export default function ComparisonPage() {
     .catch(err => console.log(err));
   }, []);
   
-  useEffect(() => {
+  useEffect(() => { //use two separate fetches to get results of two MySQL queries (in different routes) 
+                    //which will be used for the 2 displayed datagrids
     fetch(`http://${config.server_host}:${config.server_port}/comparison?redistricting_1=${redistricting_1}&redistricting_2=${redistricting_2}&state=${state}`)
       .then(res => {return res.json()})
       .then(resJson => {
@@ -54,7 +60,7 @@ export default function ComparisonPage() {
 
 
 
-
+  //data grid top columns
   const columnsA = [
     { field: 'year', headerName: 'Year', width: 200},
     { field: 'state', headerName: 'State', width: 200 },
@@ -63,7 +69,7 @@ export default function ComparisonPage() {
     { field: 'votesA', headerName: 'Votes: Redistricting A', width: 200},
     { field: 'votesB', headerName: 'Votes: Redistricting B', width: 200}
   ];
-
+  //data grid bottom columns
     const columnsB = [
     { field: 'year', headerName: 'Year', width: 220},
     { field: 'state', headerName: 'State' , width: 220},
@@ -74,7 +80,7 @@ export default function ComparisonPage() {
 
 
   return (
-    <Container>
+    <Container> //Dropdown for district mappings to compare and state
       <Dropdown className = 'Dropdown' placeholder='Select Districting #1' options = {districtings} onChange={(value) => { setmapredistricting_1(value.value) }}/>
       <Dropdown className = 'Dropdown' placeholder='Select Districting #2' options = {districtings} onChange={(value) => { setmapredistricting_2(value.value) }}/>
       <Dropdown className = 'Dropdown' placeholder='Select State' options = {states} onChange={(value) => { setState(value.value) }}/>
