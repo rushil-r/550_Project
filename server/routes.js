@@ -25,7 +25,12 @@ const home = async function(req, res) {
   console.log(`State:  ${state}`);
   const district = req.query.district ?? null; 
   console.log(`District:  ${district}`);
+  //Note: we kept the query param precincts here to support future functionality of selecting precincts 
+  //However we don't actaully access these queries in our front end. 
   const precincts = req.query.precincts ?? null; 
+
+  //Here, we check if the query params are provided, if they are, we generate a 'selection params' literal 
+  //to incorporate into WHERE statements below to select only the raw data the user wants to view
   if ((redistricting_id === null) || (election_type === null) || (year === null)) {
     output = {}
     output['election_data'] = {} 
@@ -42,36 +47,23 @@ const home = async function(req, res) {
         }
       }
     } 
+
+    //Here we go through conditional statements regarding whether a state, district, or precinct is Provided
+    //These conditional statements are used because in certain scenarios we want to provide different queries
+    //Each of the subcases returns a JSON with two sub-json objects. One has election_results which contains
+    //summary information, and election_data contains the raw values. 
     if (state === null || state === 'All') {    
       if (election_type == 'presidential') {
-        console.log('all presidential')
         connection.query(`  
-          WITH state_winners AS
-          (
-            WITH state_votes AS
-          (SELECT state, party, SUM(votes) AS total_votes
-          FROM PRECINCT_RESULT PR
-          WHERE PR.election_type = 'presidential' AND PR.year = ${year}
-          GROUP BY state, party)
-          SELECT state, party
-          FROM state_votes sv
-          WHERE (sv.state, total_votes) IN
-            (SELECT sv2.state, MAX(total_votes)
-              FROM state_votes sv2
-              WHERE sv2.state = sv.state
-              GROUP BY state)
-              )
-          SELECT SW.party, SUM(num_electoral_votes) AS electoral_votes
-          FROM state_winners SW JOIN STATE S ON SW.state = S.state
-          GROUP BY SW.party
+        SELECT party, electoral_votes 
+        FROM PRESIDENTIAL_RESULTS  
+        WHERE year = ${year}
         `,
         (err, data) => { 
           if (err || data.length === 0) {
-            console.log('line 69')
             console.log(err); 
             election_results = {}; 
           } else  { 
-            console.log('line 73')
             election_results = data;
             connection.query(` 
             SELECT PR.state, PR.county, PR.precinct, DM.district,
@@ -89,18 +81,13 @@ const home = async function(req, res) {
           `,
           (err, data) => {
             if (err || data.length === 0) {
-              console.log('line 91')
               console.log(err);
               election_data = {}; 
             } else {
-              console.log('line 92')
               election_data = data;
-              // console.log(election_data)
               output = {} 
               output['election_data'] = election_data 
-              console.log('line 97')
               output['election_summary'] = election_results
-              // console.log(output)
               res.json(output)
             }
           }) 
@@ -108,20 +95,9 @@ const home = async function(req, res) {
         })
     } else {
         connection.query(` 
-        WITH district_results AS
-        (WITH precincts AS (SELECT PR.state, PR.party, DM.district, PR.votes, PR.precinct FROM PRECINCT_RESULT PR JOIN (SELECT * FROM MAP_ELEMENT WHERE district_mapping = '${redistricting_id}') DM ON
-        PR.state = DM.state AND PR.county = DM.county AND PR.precinct = DM.precinct
-        WHERE PR.year = ${year} AND PR.election_type = 'house')
-        SELECT precincts.state, precincts.party, precincts.district, SUM(precincts.votes) AS num_votes
-        FROM precincts
-        GROUP BY state, district, party)
-        SELECT DR1.party, COUNT(*) AS num_seats
-        FROM district_results DR1
-        WHERE (DR1.state, DR1.district, DR1.num_votes) = (SELECT DR2.state, DR2.district, MAX(DR2.num_votes)
-        FROM district_results DR2 WHERE DR1.state = DR2.state
-        AND DR1.district = DR2.district
-        GROUP BY DR2.state, DR2.district)
-        GROUP BY party
+        SELECT party, num_seats 
+        FROM HOUSE_RESULTS
+        WHERE district_mapping = '${redistricting_id}' AND year = ${year}
         `,
         (err, data) => {
           if (err || data.length === 0) {
@@ -163,7 +139,6 @@ const home = async function(req, res) {
         }) 
       } 
     } else if (district === null || district === 'All') {  
-      console.log('State Provided')
       if (election_type == 'presidential') {
         connection.query(` 
         SELECT party, SUM(votes) AS num_votes
@@ -176,7 +151,6 @@ const home = async function(req, res) {
             console.log(err);
             election_results = {};
           } else  {
-            console.log('line 179')
             election_results = data;
             connection.query(` 
             SELECT PR.state, PR.county, PR.precinct, DM.district, PR.party,
@@ -201,14 +175,11 @@ const home = async function(req, res) {
               output = {} 
               output['election_data'] = election_data 
               // console.log(output) 
-              console.log('line 202')
               console.log(election_results)
               output['election_summary'] = election_results
               res.json(output)
             }
           }) 
-  
-  
           }
         })
       } else { 
@@ -305,8 +276,6 @@ const home = async function(req, res) {
               output['election_data'] = election_data 
           
               output['election_summary'] = election_results
-              // console.log('line 289')
-              // console.log(output)
               res.json(output)
             }
           }) 
