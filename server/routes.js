@@ -519,11 +519,11 @@ ON mapA.state=mapB.state AND mapA.district = mapB.district AND mapA.year = mapB.
 
 
   // GET /analytics7/
+  // Which precincts voted for different parties in different elections in year X?
 const analytics7 = async function(req, res) {
   console.log('analytics7 initiated')
   if (req.query.year != 2016) {
     console.log('analytics7 query case')
-    // Which precincts voted for different parties in different elections in year X?
     connection.query(`
       SELECT DISTINCT p.precinct, p.county, p.state
       FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct)
@@ -545,7 +545,7 @@ const analytics7 = async function(req, res) {
         res.json(data);
       }
     });
-  } else {
+  } else { // use materialized view for default param
     console.log('analytics7 default case')
     connection.query(`
       SELECT *
@@ -567,9 +567,9 @@ const analytics7 = async function(req, res) {
 }
 
 // GET /analytics11/
+// Which precincts exhibited the largest difference in votes between election types in year X?
 const analytics11 = async function(req, res) {
   console.log('analytics11 initiated')
-  // Which precincts voted for different parties in different elections in year X?
   if (req.query.year1 != 2016) {
     connection.query(`
       WITH H_VOTE_TOTAL AS (
@@ -600,7 +600,7 @@ const analytics11 = async function(req, res) {
         res.json(data);
       }
     });
-  } else {
+  } else { // use materialized view for default param
     console.log('analytics11 default case')
     connection.query(`
       SELECT *
@@ -625,7 +625,7 @@ const analytics11 = async function(req, res) {
 const analytics13 = async function(req, res) {
   console.log('analytics13 initiated')
   if (req.query.year1 != 2016 || req.query.year2 != 2018) {
-    // Which precincts exhibited the largest difference in votes between years X and Y of any election type??
+    // Which precincts exhibited the largest difference in votes between years X and Y of any election type?
     connection.query(`
       SELECT DISTINCT p.precinct, p.county, p.state, p.party, p.election_type AS type, ABS(p.votes - q.votes) / v.vote_total AS diff
       FROM PRECINCT_RESULT p JOIN PRECINCT_RESULT q ON (p.precinct = q.precinct AND p.county = q.county AND p.state = q.state)
